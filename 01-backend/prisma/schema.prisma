@@ -6,3 +6,27 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+model Rol {
+  id          Int       @id @default(autoincrement())
+  nombre      String    @unique
+  descripcion String?
+  usuarios    Usuario[]
+
+  @@map("roles")
+}
+
+model Usuario {
+  id            String   @id @default(uuid()) @db.Uuid
+  dni           String   @unique
+  nombre        String
+  email         String   @unique
+  passwordHash  String   @map("password_hash")
+  activo        Boolean  @default(true)
+  rolId         Int      @map("rol_id")
+  rol           Rol      @relation(fields: [rolId], references: [id])
+  creadoEn      DateTime @default(now()) @map("creado_en")
+  actualizadoEn DateTime @updatedAt @map("actualizado_en")
+
+  @@map("usuarios")
+}
