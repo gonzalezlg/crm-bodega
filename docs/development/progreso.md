@@ -40,16 +40,16 @@
 - [x] Endpoint Login
 - [x] Pruebas
 - [x] Documentar etapa
-- [ ] Commit
+- [x] Commit
 
 #### 1.3 Autorización
-- [ ] JWT Strategy
-- [ ] Auth Guard
-- [ ] Roles Guard
-- [ ] Decorador Roles
-- [ ] Endpoint protegido de prueba
-- [ ] Pruebas
-- [ ] Documentar etapa
+- [x] JWT Strategy
+- [x] Auth Guard
+- [x] Roles Guard
+- [x] Decorador Roles
+- [x] Endpoint protegido de prueba
+- [x] Pruebas
+- [x] Documentar etapa
 - [ ] Commit
 
 #### 1.4 Frontend
