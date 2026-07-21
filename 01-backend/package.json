@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "build": "nest build",
-    "start": "node dist/main.js",
+    "start": "node dist/src/main.js",
     "start:dev": "nest start --watch",
     "prisma:generate": "prisma generate",
     "migrate": "prisma migrate dev",
@@ -13,6 +13,7 @@
   "dependencies": {
     "@nestjs/common": "^11.0.0",
     "@nestjs/core": "^11.0.0",
+    "@nestjs/jwt": "^11.0.2",
     "@nestjs/platform-express": "^11.0.0",
     "@prisma/client": "^6.0.0",
     "bcrypt": "^6.0.0",

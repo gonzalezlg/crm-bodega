@@ -1,0 +1,18 @@
+### Login con Email
+POST http://localhost:3000/auth/login
+Content-Type: application/json
+
+{
+  "emailOrDni": "admin@crmbodega.local",
+  "password": "Admin123!"
+}
+
+
+### Login con DNI
+POST http://localhost:3000/auth/login
+Content-Type: application/json
+
+{
+  "emailOrDni": "30123456",
+  "password": "Admin123!"
+}
