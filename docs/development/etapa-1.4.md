@@ -1,4 +1,5 @@
 # Etapa 1.4 - Infraestructura de Autenticación del Frontend
+commit -m "feat(frontend): implement authentication infrastructure"
 
 ## Objetivo
 

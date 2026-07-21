@@ -45,13 +45,13 @@ function LoginPage() {
         )}
 
         <label className="mt-5 block text-sm font-medium text-zinc-700">
-          Email
+          Email o DNI
           <input
-            type="email"
+            type="text"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             required
-            autoComplete="email"
+            autoComplete="username"
             className="mt-2 w-full rounded-md border border-zinc-300 px-3 py-2 text-zinc-950 outline-none focus:border-zinc-900"
           />
         </label>
