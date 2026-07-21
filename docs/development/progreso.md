@@ -66,12 +66,15 @@
 ---
 
 ### Etapa 2 - Layout
-- [ ] Layout principal
-- [ ] Sidebar
-- [ ] Header
-- [ ] Dashboard
-- [ ] Pruebas
-- [ ] Documentar etapa
+- [x] Layout principal
+- [x] Sidebar
+- [x] Header
+- [x] Dashboard inicial
+- [x] Navegación
+- [x] Componentes reutilizables
+- [x] Responsive básico
+- [x] Pruebas
+- [x] Documentar etapa
 - [ ] Commit
 
 ---

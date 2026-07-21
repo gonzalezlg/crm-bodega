@@ -11,7 +11,7 @@ function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (isAuthenticated) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   async function handleSubmit(event) {
@@ -21,7 +21,7 @@ function LoginPage() {
 
     try {
       await login({ email, password });
-      navigate('/', { replace: true });
+      navigate('/dashboard', { replace: true });
     } catch (loginError) {
       setError(loginError.message);
     } finally {

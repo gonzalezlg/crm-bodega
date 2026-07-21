@@ -1,5 +1,6 @@
 # Etapa 1.4 - Infraestructura de Autenticación del Frontend
 commit -m "feat(frontend): implement authentication infrastructure"
+commit -m "fix(frontend): allow login with email or DNI"
 
 ## Objetivo
 
