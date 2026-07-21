@@ -75,7 +75,7 @@
 - [x] Responsive básico
 - [x] Pruebas
 - [x] Documentar etapa
-- [ ] Commit
+- [x] Commit
 
 ---
 

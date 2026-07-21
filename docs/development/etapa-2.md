@@ -1,4 +1,5 @@
 # Etapa 2 - Layout
+commit -m "feat(frontend): implement main application layout"
 
 ## Objetivo
 
