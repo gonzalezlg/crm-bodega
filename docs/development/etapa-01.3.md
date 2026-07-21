@@ -1,4 +1,5 @@
 # Etapa 1.3 - Autorización con JWT y Roles
+commit -m "feat(auth): implementar autorización con JWT y roles"
 
 ## Objetivo
 

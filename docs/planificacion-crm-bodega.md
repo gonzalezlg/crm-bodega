@@ -366,7 +366,7 @@ Errores comunes en todos los endpoints: `400` validación, `401` no autenticado,
 
 ## 14. Arquitectura propuesta
 
-**Frontend**: SPA en React + Vite + TypeScript, React Router para rutas, Tailwind CSS para estilos, manejo de estado con Context API + hooks (sin Redux, innecesario para el MVP), llamadas a API centralizadas en una capa `services/`.
+**Frontend**: SPA en React + Vite + JavaScript, React Router para rutas, Tailwind CSS para estilos, manejo de estado con Context API + hooks (sin Redux, innecesario para el MVP), llamadas a API centralizadas en una capa `services/`.
 
 **Backend**: API REST recomendada en **Node.js con NestJS**. Comparación breve:
 - *Express*: muy simple para arrancar, pero requiere armar a mano la estructura de capas (controlador/servicio/repositorio), lo que puede derivar en desorden si no hay disciplina.
@@ -449,14 +449,14 @@ frontend/
       clientes.service.ts
       ...
     context/
-      AuthContext.tsx
+      AuthContext.jsx
     routes/
-      AppRoutes.tsx
-      ProtectedRoute.tsx
+      AppRoutes.jsx
+      ProtectedRoute.jsx
     types/
     hooks/
-    App.tsx
-    main.tsx
+    App.jsx
+    main.jsx
   index.html
   package.json
 ```
@@ -516,7 +516,7 @@ Cada etapa depende de la anterior; el orden permite tener siempre un sistema fun
 - Dependencias: ninguna.
 
 **T-002 — Setup inicial del frontend**
-- Construir: proyecto Vite + React + TypeScript + Tailwind, estructura de carpetas base.
+- Construir: proyecto Vite + React + JavaScript + Tailwind, estructura de carpetas base.
 - Archivos: `frontend/` completo según sección 15.
 - Criterios: `npm run dev` levanta y muestra pantalla base.
 - Dependencias: ninguna.
@@ -535,7 +535,7 @@ Cada etapa depende de la anterior; el orden permite tener siempre un sistema fun
 
 **T-005 — Pantalla de login y contexto de auth (frontend)**
 - Construir: página `/login`, `AuthContext`, `ProtectedRoute`.
-- Archivos: `frontend/src/pages/Login/*`, `frontend/src/context/AuthContext.tsx`, `frontend/src/routes/*`.
+- Archivos: `frontend/src/pages/Login/*`, `frontend/src/context/AuthContext.jsx`, `frontend/src/routes/*`.
 - Criterios: login exitoso redirige a `/dashboard`; ruta protegida redirige a `/login` sin sesión.
 - Dependencias: T-002, T-004.
 
@@ -607,7 +607,7 @@ Quiero que inicies desde cero un proyecto de CRM web para la administración de 
 
 Stack:
 - Backend: NestJS + TypeScript + Prisma + PostgreSQL (o SQLite para desarrollo local).
-- Frontend: React + Vite + TypeScript + React Router + Tailwind CSS.
+- Frontend: React + Vite + Javascript + React Router + Tailwind CSS.
 
 Primer paso: crear la estructura base de dos carpetas, backend/ y frontend/, en la raíz del proyecto, siguiendo exactamente la estructura de carpetas detallada en la sección 15 de la planificación.
 
@@ -618,7 +618,7 @@ Backend:
 - No implementes todavía ningún módulo de negocio (auth, reservas, etc.), solo la base del proyecto.
 
 Frontend:
-- Inicializar proyecto Vite + React + TypeScript.
+- Inicializar proyecto Vite + React + JavaScript.
 - Configurar Tailwind CSS.
 - Crear una pantalla base vacía en / que muestre el nombre del proyecto, sin lógica de negocio todavía.
 

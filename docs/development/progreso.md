@@ -5,7 +5,7 @@
 ### Etapa 0 - Bootstrap
 - [x] Inicializar proyecto
 - [x] Configurar NestJS
-- [x] Configurar React + Vite + TypeScript
+- [x] Configurar React + Vite + JavaScript
 - [x] Configurar Tailwind CSS
 - [x] Configurar Prisma
 - [x] Configurar estructura del proyecto
@@ -50,17 +50,18 @@
 - [x] Endpoint protegido de prueba
 - [x] Pruebas
 - [x] Documentar etapa
-- [ ] Commit
+- [x] Commit
 
 #### 1.4 Frontend
-- [ ] Pantalla Login
-- [ ] Contexto de Autenticación
-- [ ] Manejo del Token
-- [ ] Logout
-- [ ] Protección de rutas
-- [ ] Pruebas
-- [ ] Documentar etapa
-- [ ] Commit
+- [x] Pantalla Login
+- [x] Contexto de Autenticación
+- [x] Manejo del Token
+- [x] Logout
+- [x] Protección de rutas
+- [x] Configuración de CORS (desarrollo)
+- [x] Pruebas
+- [x] Documentar etapa
+- [x] Commit
 
 ---
 
