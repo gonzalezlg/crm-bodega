@@ -8,6 +8,15 @@ Nunca desarrollar directamente sobre main.
 
 ---
 
+## Reglas del proyecto
+
+- Está prohibido desarrollar directamente sobre `main`, aunque GitHub lo permita.
+- Toda funcionalidad debe desarrollarse en una rama `feature/*`.
+- Todo cambio funcional debe incorporarse a `main` mediante una Pull Request.
+- El bypass de la protección de `main` solo podrá utilizarse para tareas excepcionales de mantenimiento o configuración del repositorio.
+
+---
+
 ## Flujo de trabajo
 
 1. Crear rama feature.
