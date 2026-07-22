@@ -1,630 +1,1230 @@
-# Planificación CRM Bodega — MVP
+# Planificacion CRM Bodega - MVP
 
 ---
 
 ## 1. Resumen ejecutivo
 
-**Problema que resuelve:** hoy la información operativa de la bodega (reservas de degustaciones y restaurante, clientes, stock, gastos e ingresos) probablemente vive dispersa en planillas, cuadernos o la memoria del dueño. Esto dificulta saber, en un momento dado, cuántas personas vienen hoy, qué productos están por agotarse o cuál es el balance del mes. El CRM centraliza esa información en un solo sistema web.
+**Problema que resuelve:** la informacion operativa y administrativa de la bodega puede quedar dispersa entre planillas, cuadernos, mensajes o la memoria del equipo. Esto dificulta saber rapidamente que reservas hay hoy, que clientes deben ser atendidos, que productos estan por agotarse, cuanto se vendio, que compras se realizaron y que gastos impactan en la gestion diaria.
 
-**Quiénes lo usarán:**
-- **Dueño/administrador**: visión general del negocio, control total.
-- **Empleados**: uso operativo diario (cargar reservas, clientes, movimientos de stock, gastos/ingresos según permiso).
+El CRM Bodega centraliza esa informacion en un sistema web unico, con foco en la operacion diaria, la trazabilidad y la toma de decisiones.
 
-**Qué incluye el MVP:** dashboard con indicadores clave, gestión de reservas (restaurante y degustaciones), clientes, productos/vinos, stock por movimientos, gastos, ingresos/ventas simples, y administración básica de usuarios con dos roles.
+**Usuarios principales:**
 
-**Qué NO incluye el MVP:** facturación electrónica, integraciones de pago, notificaciones automáticas (WhatsApp/email), contabilidad completa, gestión de producción/viñedos, app móvil nativa, IA, reportes predictivos. Todo esto queda documentado como evolución futura, sin bloquear la arquitectura.
+- **Administrador o dueno:** vision general del negocio, control operativo y administrativo.
+- **Empleados:** uso diario segun permisos, por ejemplo reservas, clientes, ventas, compras, stock o gastos.
 
----
+**Modulos principales del MVP:**
 
-## 2. Supuestos funcionales
+- Autenticacion.
+- Dashboard.
+- Clientes.
+- Categorias.
+- Productos.
+- Reservas.
+- Compras.
+- Proveedores.
+- Stock.
+- Ventas.
+- Gastos.
+- Reportes.
+- Usuarios.
+- Configuracion.
 
-| # | Problema / ambigüedad | Decisión propuesta | Motivo |
-|---|---|---|---|
-| 1 | Capacidad máxima por horario de degustación | Configurable por tipo de reserva, valor por defecto 20 personas por turno | Permite ajustarlo sin tocar código; 20 es razonable para una bodega chica-mediana |
-| 2 | Duración de una degustación | Fija en 90 minutos por defecto, editable en configuración | Simplifica el cálculo de solapamiento de turnos |
-| 3 | Disponibilidad de mesas del restaurante | En el MVP no se modela mesas individuales, solo capacidad total de comensales por franja horaria (configurable, ej. 40 personas) | Modelar mesas físicas es complejidad de un sistema de reservas de restaurante completo; no es imprescindible para el MVP |
-| 4 | Reservas simultáneas / superposición | El sistema valida que la suma de personas en un turno no supere la capacidad configurada, pero no bloquea duro: muestra advertencia y permite forzar (el empleado puede decidir) | El dueño puede querer hacer excepciones (evento especial); bloquear duro genera fricción |
-| 5 | Manejo de cancelaciones | Cambia el estado a "Cancelada", no se elimina el registro, libera cupo | Trazabilidad e histórico para reportes futuros |
-| 6 | Stock negativo | No se permite: una salida de stock que deje el total en negativo se rechaza con error claro | Evita datos inconsistentes; el dueño prefiere detectar el problema antes que "arrastrar" un negativo |
-| 7 | Registro de ventas | En el MVP, "venta" es un movimiento de stock (salida) + opcionalmente un registro de ingreso asociado; no hay carrito ni facturación | Cubre la necesidad real sin construir un POS completo |
-| 8 | Diferencia entre ingresos y ventas | "Ingreso" es el registro financiero (dinero que entra); "venta" es el movimiento de stock que puede o no generar un ingreso asociado (ej. consumo interno no genera ingreso) | Separar dinero de inventario da flexibilidad y es más simple de mantener consistente |
-| 9 | Permisos de empleados | Todos los empleados tienen el mismo set de permisos en el MVP (reservas, clientes, stock, gastos/ingresos), sin permisos granulares por persona | Piden explícitamente no complejizar permisos ahora; queda preparado el modelo de roles para extenderlo |
-| 10 | Clientes duplicados | Se advierte si ya existe un cliente con el mismo email o teléfono al crear uno nuevo, pero no se bloquea | Evita fricción operativa sin perder prevención de duplicados |
-| 11 | Eliminación de registros | No hay borrado físico de reservas, clientes, productos, gastos o ingresos; se usa baja lógica (`activo`/`estado`) | Trazabilidad y auditoría básica |
-| 12 | Zona horaria / moneda | Zona horaria única del negocio (configurable, default `America/Argentina/Buenos_Aires`), moneda única ARS | Bodega argentina, un solo local; multi-moneda es innecesario para el MVP |
+Las operaciones comerciales del sistema se organizan mediante **Ventas**, **Compras** y **Gastos**. No existe un modulo funcional generico de Ingresos independiente.
 
----
-
-## 3. Priorización del MVP
-
-**Imprescindible para el MVP**
-- Autenticación con roles (dueño / empleado)
-- Dashboard básico (reservas del día, próximas, ingresos/gastos del período, stock bajo)
-- CRUD de reservas (restaurante y degustación) con estados y confirmación de asistencia
-- CRUD de clientes con historial de reservas
-- CRUD de productos/vinos con stock actual calculado
-- Movimientos de stock (ingreso, venta, consumo interno, pérdida, ajuste)
-- Registro de gastos
-- Registro de ingresos
-- Gestión básica de usuarios (alta por parte del dueño)
-
-**Conveniente para el MVP**
-- Filtros y búsqueda avanzada en tablas (por fecha, estado, categoría)
-- Observaciones/preferencias de clientes
-- Alertas visuales de stock mínimo en dashboard
-- Exportar listados simples (CSV) — si el tiempo lo permite
-
-**Versión futura**
-- Facturación electrónica e integración fiscal
-- Pagos online / Mercado Pago
-- Notificaciones automáticas (WhatsApp, email)
-- Adjuntar comprobantes a gastos
-- Gestión de mesas físicas del restaurante
-- Permisos granulares por usuario
-- Reportes avanzados / predictivos
-- Gestión de producción de vino y viñedos
-- App móvil nativa
+**Fuera del MVP:** facturacion electronica, integraciones con medios de pago, notificaciones automaticas, contabilidad completa, produccion enologica, trazabilidad de elaboracion, multiples sucursales, app movil nativa, inteligencia artificial y reportes predictivos.
 
 ---
 
-## 4. Historias de usuario
+## 2. Stack aprobado
 
-### Autenticación
-**HU-01** Como usuario del sistema, quiero iniciar sesión con email y contraseña, para acceder a las funciones según mi rol.
-- Criterios: login rechaza credenciales inválidas con mensaje claro; sesión expira tras un tiempo configurable; tras login exitoso redirige al dashboard.
+### Frontend
 
-**HU-02** Como usuario, quiero cerrar sesión, para proteger el acceso al sistema.
-- Criterios: botón de logout visible; al cerrar sesión se invalida el token y redirige a `/login`.
+- React.
+- Vite.
+- JavaScript.
+- Tailwind CSS.
 
-### Dashboard
-**HU-03** Como dueño, quiero ver un resumen del día al entrar al sistema, para tomar decisiones rápidas.
-- Criterios: muestra reservas del día, personas esperadas, ingresos y gastos del período, productos con stock bajo, últimos movimientos. Estado de carga y estado vacío contemplados.
+### Backend
 
-### Reservas
-**HU-04** Como empleado, quiero crear una reserva de restaurante o degustación, para registrar la visita de un cliente.
-- Criterios: formulario pide tipo, fecha, hora, cantidad de personas, cliente (existente o nuevo), observaciones; valida capacidad del turno; guarda con estado "Pendiente".
+- NestJS.
+- Prisma.
+- PostgreSQL.
+- Supabase como proveedor gestionado de PostgreSQL.
 
-**HU-05** Como empleado, quiero confirmar una reserva, para indicar que el cliente confirmó su asistencia.
-- Criterios: cambia estado a "Confirmada"; solo posible desde "Pendiente".
-
-**HU-06** Como empleado, quiero registrar la asistencia de una reserva, para saber quién efectivamente vino.
-- Criterios: cambia estado a "Completada"; solo disponible el día de la reserva o posterior.
-
-**HU-07** Como empleado, quiero cancelar una reserva, para liberar el cupo si el cliente avisa que no viene.
-- Criterios: pide confirmación; cambia estado a "Cancelada"; libera cupo del turno.
-
-**HU-08** Como empleado, quiero marcar una reserva como "No asistió", para llevar registro de ausencias.
-- Criterios: disponible solo después de la fecha/hora de la reserva.
-
-**HU-09** Como empleado, quiero ver las reservas por día, semana o mes, para organizar la operación.
-- Criterios: vista con filtro de rango de fechas y tipo de reserva; tabla ordenable.
-
-### Clientes
-**HU-10** Como empleado, quiero registrar un cliente nuevo, para asociarlo a una reserva.
-- Criterios: nombre y apellido obligatorios; valida formato de email si se completa; advierte si ya existe un cliente con mismo email/teléfono.
-
-**HU-11** Como empleado, quiero ver el historial de reservas de un cliente, para conocer su relación con la bodega.
-- Criterios: en la ficha del cliente se listan sus reservas ordenadas por fecha, con estado.
-
-### Productos
-**HU-12** Como dueño, quiero registrar un producto o vino, para gestionarlo en stock y ventas.
-- Criterios: nombre, categoría y precio de venta obligatorios; stock inicial en 0 salvo que se cargue un movimiento de ingreso.
-
-**HU-13** Como dueño, quiero marcar un producto como inactivo, para dejar de ofrecerlo sin borrar su historial.
-- Criterios: producto inactivo no aparece en selectores de nuevas ventas, pero sí en reportes históricos.
-
-### Stock
-**HU-14** Como empleado, quiero registrar un ingreso de mercadería, para actualizar el stock disponible.
-- Criterios: pide producto, cantidad, fecha, usuario responsable; suma al stock actual.
-
-**HU-15** Como empleado, quiero registrar una salida de stock (venta, consumo interno, pérdida), para reflejar la realidad del inventario.
-- Criterios: valida que no deje stock negativo; pide motivo si es pérdida o ajuste.
-
-### Gastos
-**HU-16** Como empleado con permiso, quiero registrar un gasto, para llevar control de egresos.
-- Criterios: fecha, concepto, categoría e importe obligatorios; estado de pago (pagado/pendiente).
-
-### Ingresos
-**HU-17** Como empleado con permiso, quiero registrar un ingreso, para llevar control de lo facturado.
-- Criterios: fecha, concepto, origen e importe obligatorios; cliente y reserva asociada opcionales.
-
-### Usuarios
-**HU-18** Como dueño, quiero crear usuarios empleados, para que puedan operar el sistema.
-- Criterios: solo el dueño accede a esta pantalla; email único; contraseña con requisitos mínimos.
+Supabase se utiliza unicamente para alojar la base de datos PostgreSQL mediante `DATABASE_URL`. No se utiliza Supabase Auth, Supabase Storage, Supabase Edge Functions ni Row Level Security como reemplazo de la autorizacion del backend.
 
 ---
 
-## 5. Flujos principales
+## 3. Alcance del MVP
 
-**Crear una reserva**
-1. Usuario entra a "Reservas" → "Nueva reserva".
-2. Selecciona tipo (restaurante/degustación), fecha, hora, cantidad de personas.
-3. Busca cliente existente o crea uno nuevo en el mismo formulario.
-4. Sistema valida capacidad del turno; si se supera, muestra advertencia con opción de continuar.
-5. Guarda con estado "Pendiente" y muestra confirmación.
-- *Errores*: campos obligatorios faltantes, fecha en el pasado, cliente inválido.
+El MVP debe cubrir los modulos definidos por el roadmap aprobado:
 
-**Confirmar reserva**
-1. Desde el listado o ficha de la reserva, botón "Confirmar" (solo si estado = Pendiente).
-2. Sistema pide confirmación y cambia estado a "Confirmada".
+0. Bootstrap.
+1. Autenticacion.
+2. Dashboard.
+3. Clientes.
+4. Categorias.
+5. Productos.
+6. Reservas.
+7. Compras y Proveedores.
+8. Stock.
+9. Ventas.
+10. Gastos.
+11. Reportes.
+12. Usuarios.
+13. Configuracion.
+14. Produccion y despliegue.
 
-**Registrar asistencia**
-1. Desde la ficha, botón "Marcar como completada" (habilitado desde la fecha de la reserva en adelante).
-2. Cambia estado a "Completada".
+La etapa **Produccion y despliegue** se refiere a preparar y desplegar la aplicacion. No implica gestionar produccion de vino, lotes, fermentacion, barricas, cosechas ni procesos enologicos.
 
-**Cancelar reserva**
-1. Botón "Cancelar" con modal de confirmación.
-2. Cambia estado a "Cancelada", libera cupo del turno.
+### Imprescindible para el MVP
 
-**Crear cliente**
-1. Formulario con nombre, apellido y datos de contacto.
-2. Sistema verifica duplicados por email/teléfono y muestra advertencia no bloqueante.
-3. Guarda cliente.
+- Login y autorizacion basica por rol.
+- Dashboard operativo segun rol.
+- Gestion de clientes.
+- Gestion de categorias.
+- Gestion de productos.
+- Gestion de reservas.
+- Gestion de proveedores.
+- Gestion de compras.
+- Stock calculado mediante movimientos.
+- Gestion de ventas.
+- Gestion de gastos.
+- Reportes basicos de ventas, compras, gastos y stock.
+- Gestion basica de usuarios.
+- Configuracion general del sistema.
 
-**Registrar producto**
-1. Formulario con nombre, categoría, precio, costo, stock mínimo.
-2. Guarda producto con stock actual en 0.
+### Mejoras futuras
 
-**Registrar ingreso de stock**
-1. Selecciona producto, cantidad, fecha.
-2. Sistema suma la cantidad al stock actual y crea el movimiento.
-
-**Registrar venta/salida de stock**
-1. Selecciona producto, tipo de salida, cantidad.
-2. Sistema valida stock suficiente; si no alcanza, muestra error y no permite continuar.
-3. Descuenta del stock, crea el movimiento; si es venta, ofrece crear un ingreso asociado.
-
-**Registrar gasto**
-1. Formulario con fecha, concepto, categoría, importe, medio de pago, proveedor opcional.
-2. Guarda el gasto.
-
-**Consultar dashboard**
-1. Al ingresar al sistema se cargan indicadores del período actual (por defecto, mes en curso).
-2. Usuario puede cambiar el rango de fechas para recalcular indicadores.
-
----
-
-## 6. Mapa de pantallas
-
-1. **Login** — objetivo: autenticar al usuario. Info: formulario email/contraseña. Acciones: iniciar sesión. Errores: credenciales inválidas.
-2. **Dashboard** — objetivo: resumen del negocio. Info: tarjetas de indicadores, tabla de reservas del día, alertas de stock bajo. Filtros: rango de fechas. Responsive: tarjetas se apilan en mobile.
-3. **Listado de reservas** — objetivo: gestionar reservas. Info: tabla con fecha, cliente, tipo, personas, estado. Filtros: por fecha, tipo, estado. Botones: nueva reserva, ver/editar. Estado vacío: "No hay reservas para el rango seleccionado".
-4. **Detalle/formulario de reserva** — objetivo: crear/editar reserva. Formulario con validaciones. Acciones: confirmar, cancelar, marcar asistencia.
-5. **Listado de clientes** — objetivo: gestionar clientes. Tabla con nombre, contacto, cantidad de reservas. Filtros: búsqueda por nombre/email.
-6. **Detalle de cliente** — objetivo: ver ficha completa. Info: datos de contacto, historial de reservas, preferencias.
-7. **Listado de productos** — objetivo: gestionar catálogo. Tabla con nombre, categoría, stock actual, estado. Alertas: stock bajo mínimo resaltado.
-8. **Detalle/formulario de producto** — objetivo: crear/editar producto.
-9. **Movimientos de stock** — objetivo: ver histórico y registrar nuevos movimientos. Tabla con fecha, producto, tipo, cantidad, usuario. Filtros: por producto, tipo, fecha.
-10. **Listado de gastos** — objetivo: gestionar egresos. Tabla con fecha, concepto, categoría, importe, estado de pago. Filtros: por fecha, categoría.
-11. **Listado de ingresos** — objetivo: gestionar ingresos. Tabla con fecha, concepto, origen, importe. Filtros: por fecha, origen.
-12. **Listado de usuarios** (solo dueño) — objetivo: administrar accesos. Tabla con nombre, email, rol, estado. Acciones: crear, desactivar.
-13. **Configuración** — objetivo: parámetros generales (capacidad de turnos, duración de degustación, categorías). Solo dueño.
+- Exportacion de informacion o reportes a CSV, Excel u otros formatos.
+- Facturacion electronica.
+- Integracion con medios de pago.
+- Notificaciones automaticas por WhatsApp o email.
+- Adjuntar comprobantes a gastos o compras.
+- Gestion de mesas fisicas del restaurante.
+- Permisos granulares avanzados.
+- Reportes predictivos.
+- Busqueda global y atajos globales.
+- Guardado progresivo o recuperacion de formularios incompletos.
+- App movil nativa.
 
 ---
 
-## 7. Navegación
+## 4. Supuestos funcionales
 
-Menú lateral: Dashboard, Reservas, Clientes, Productos, Stock, Gastos, Ingresos, Usuarios (solo dueño), Configuración (solo dueño).
+| # | Tema | Decision funcional |
+|---|---|---|
+| 1 | Capacidad por turno | Configurable por tipo de reserva. El valor inicial recomendado para degustaciones es 20 personas por turno. |
+| 2 | Duracion de degustacion | 90 minutos por defecto, editable desde configuracion. |
+| 3 | Restaurante | En el MVP no se modelan mesas individuales; se gestiona capacidad total por franja horaria. |
+| 4 | Superposicion de reservas | El sistema valida la capacidad y muestra advertencia si se supera. Puede permitirse forzar segun permisos. |
+| 5 | Cancelaciones | Una reserva cancelada cambia de estado, no se elimina. |
+| 6 | Stock negativo | No se permite ninguna operacion que deje stock negativo. |
+| 7 | Producto unico | Existe una unica entidad Producto para productos terminados e insumos. |
+| 8 | Ventas | Venta reemplaza al concepto funcional de Ingreso. Una venta puede generar salidas automaticas de stock. |
+| 9 | Compras | Las compras representan adquisiciones operativas y no siempre afectan inventario. |
+| 10 | Gastos | Gastos se mantiene separado de Compras para egresos administrativos o financieros. |
+| 11 | Clientes duplicados | Se advierte ante email o telefono ya existente, sin bloquear necesariamente la carga. |
+| 12 | Borrado fisico | No se eliminan registros con historial relevante; se usan bajas logicas o estados. |
+| 13 | Zona horaria y moneda | Zona horaria unica del negocio, default `America/Argentina/Buenos_Aires`; moneda unica ARS. |
 
-Rutas:
-- `/login` — pública
-- `/dashboard` — protegida
-- `/reservas`, `/reservas/nueva`, `/reservas/:id` — protegidas
-- `/clientes`, `/clientes/nuevo`, `/clientes/:id` — protegidas
-- `/productos`, `/productos/nuevo`, `/productos/:id` — protegidas
-- `/stock` — protegida
-- `/gastos`, `/gastos/nuevo` — protegidas
-- `/ingresos`, `/ingresos/nuevo` — protegidas
-- `/usuarios` — protegida, solo rol `owner`
-- `/configuracion` — protegida, solo rol `owner`
+### Compras y stock
 
-Todas las rutas excepto `/login` requieren sesión válida; `/usuarios` y `/configuracion` requieren además rol de dueño.
+Las compras representan adquisiciones operativas de la bodega, como insumos, productos, mantenimiento o servicios.
+
+Una compra puede:
+
+- incluir productos que controlan stock;
+- incluir productos que no controlan stock;
+- incluir conceptos o servicios escritos como texto libre.
+
+Solo los items asociados a productos con `controlaStock` activo generan movimientos de entrada. No debe asumirse que toda compra incrementa automaticamente el stock.
 
 ---
 
-## 8. Wireframes textuales
+## 5. Productos y categorias
+
+Existe una unica entidad **Producto** para representar tanto productos terminados como insumos.
+
+Ejemplos de productos:
+
+- vinos;
+- botellas;
+- corchos;
+- cajas;
+- etiquetas;
+- materias primas;
+- insumos generales;
+- productos de merchandising;
+- productos gastronomicos.
+
+Los productos deben poder distinguirse mediante propiedades funcionales equivalentes a:
+
+- `tipoProducto`;
+- `seVende`;
+- `seCompra`;
+- `controlaStock`.
+
+No se deben crear modelos separados para vinos e insumos en esta etapa.
+
+Las categorias se administran mediante un modulo propio y se relacionan con productos. Permiten ordenar el catalogo, facilitar busquedas y mejorar filtros operativos y reportes.
+
+---
+
+## 6. Stock
+
+El modelo de inventario aprobado se basa en movimientos:
+
+- El stock no se almacena como un valor editable directamente.
+- El stock actual se calcula a partir de la suma de movimientos.
+- Los movimientos de stock son inmutables.
+- Un movimiento registrado no debe editarse ni eliminarse para corregir cantidades.
+- Los errores se corrigen mediante nuevos movimientos correctivos.
+- No se permite stock negativo.
+- Todos los movimientos deben permitir identificar su origen.
+- Deben registrarse usuario, fecha y origen de la operacion.
+
+**MovimientoStock** debe contemplar conceptualmente:
+
+- tipo de movimiento;
+- cantidad;
+- producto;
+- fecha;
+- usuario;
+- origen;
+- `origenId`;
+- observaciones, cuando corresponda.
+
+Los posibles origenes pueden incluir:
+
+- venta;
+- compra;
+- correccion;
+- ajuste inicial;
+- otra operacion autorizada.
+
+Las ventas generan automaticamente movimientos de salida para productos con `controlaStock` activo. Las compras generan movimientos de entrada solo para los items asociados a productos que controlan stock. Los movimientos manuales quedan reservados para ajustes iniciales, correcciones u otras operaciones autorizadas.
+
+---
+
+## 7. Ventas
+
+El modulo **Ventas** representa las operaciones comerciales de salida de productos. Reemplaza cualquier referencia funcional previa al modulo generico de Ingresos.
+
+Una venta debe:
+
+- tener uno o mas productos;
+- registrar cantidades;
+- registrar precios;
+- calcular subtotales y total;
+- asociarse opcionalmente con un cliente;
+- registrar usuario y fecha;
+- generar automaticamente movimientos de salida para productos que controlan stock;
+- impedir la operacion cuando no exista stock suficiente.
+
+Conceptualmente incluye:
+
+- **Venta**;
+- **VentaDetalle**.
+
+No se mantiene una entidad Ingreso independiente para el MVP.
+
+---
+
+## 8. Compras y proveedores
+
+### Proveedores
+
+El modulo **Proveedores** permite gestionar la informacion necesaria para identificar y contactar a quienes venden productos, insumos o servicios a la bodega.
+
+La informacion conceptual puede incluir:
+
+- nombre o razon social;
+- telefono;
+- email;
+- direccion;
+- CUIT u otro identificador fiscal, si corresponde;
+- observaciones;
+- estado activo/inactivo.
+
+### Compras
+
+Una compra debe:
+
+- asociarse con un proveedor cuando corresponda;
+- contener uno o mas items;
+- permitir productos registrados;
+- permitir conceptos o servicios de texto libre;
+- registrar cantidades y precios;
+- calcular subtotales y total;
+- registrar fecha y usuario;
+- generar entradas de stock solamente para productos con `controlaStock` activo.
+
+Conceptualmente incluye:
+
+- **Proveedor**;
+- **Compra**;
+- **CompraDetalle**.
+
+Debe evitarse duplicar una misma operacion como compra y gasto sin una regla funcional explicita.
+
+---
+
+## 9. Reservas
+
+El modulo **Reservas** forma parte del MVP y debe permitir:
+
+- seleccionar o registrar un cliente;
+- indicar fecha;
+- indicar hora;
+- indicar cantidad de personas;
+- agregar observaciones;
+- gestionar estados de la reserva;
+- identificar reservas pendientes de confirmacion;
+- consultar proximas reservas.
+
+Cuando se seleccione un cliente existente, el sistema debe reutilizar sus datos y evitar que el usuario tenga que volver a escribir telefono, correo u otra informacion ya registrada.
+
+Estados sugeridos:
+
+- Pendiente.
+- Confirmada.
+- Completada.
+- Cancelada.
+- No asistio.
+
+---
+
+## 10. Gastos
+
+El modulo **Gastos** se mantiene separado de Compras.
+
+Los gastos representan egresos que se desea registrar para control administrativo o financiero. Pueden utilizar categorias frecuentes, por ejemplo:
+
+- servicios;
+- mantenimiento;
+- limpieza;
+- insumos;
+- marketing;
+- otros.
+
+Una operacion no debe duplicarse como compra y gasto salvo que exista una regla funcional explicita que lo justifique.
+
+---
+
+## 11. Reportes
+
+El modulo **Reportes** centraliza la informacion analitica del negocio.
+
+Debe incluir principalmente:
+
+- analisis de ventas;
+- analisis de compras;
+- analisis de gastos;
+- informacion de stock;
+- indicadores por periodo;
+- filtros de fechas;
+- informacion necesaria para la gestion del negocio.
+
+Los graficos deben considerarse prioritariamente parte de Reportes y no el elemento principal del Dashboard.
+
+La exportacion de reportes queda como mejora futura para el MVP.
+
+---
+
+## 12. Dashboard
+
+Filosofia del modulo:
+
+> El Dashboard debe responder en menos de cinco segundos como esta la bodega hoy.
+
+El Dashboard debe priorizar informacion operativa, no analisis profundo. Los analisis detallados corresponden principalmente a Reportes.
+
+### Secciones principales
+
+**Indicadores:**
+
+- reservas del dia;
+- ventas del dia;
+- gastos del dia;
+- productos con stock bajo.
+
+**Proximas reservas.**
+
+**Alertas:**
+
+- stock bajo;
+- compras pendientes, cuando corresponda;
+- reservas sin confirmar;
+- otros eventos operativos relevantes.
+
+**Actividad reciente.**
+
+**Acciones rapidas:**
+
+- nueva reserva;
+- nueva venta;
+- nuevo cliente;
+- nueva compra;
+- registrar gasto.
+
+El Dashboard debe mostrar informacion segun el rol del usuario, priorizando lo necesario para su trabajo diario.
+
+Perfiles de UX y permisos de referencia:
+
+- **Administrador:** vision general, ventas, compras, gastos, stock y actividad reciente.
+- **Recepcion o turismo:** reservas, confirmaciones, clientes y accesos rapidos relacionados.
+- **Deposito:** stock, compras, movimientos y alertas de inventario.
+
+Estos perfiles son referencias de experiencia y permisos. No agregan nuevos roles obligatorios al modelo actual.
+
+---
+
+## 13. Navegacion
+
+El sistema debe utilizar un menu lateral organizado por areas funcionales:
 
 **Dashboard**
-```
-[Header: logo | nombre bodega | usuario | logout]
-[Menú lateral]  [Filtro de rango de fechas]
-  [Tarjeta: Reservas hoy] [Tarjeta: Personas esperadas]
-  [Tarjeta: Ingresos período] [Tarjeta: Gastos período] [Tarjeta: Balance]
-  [Tabla: Últimos movimientos de stock]
-  [Lista: Productos con stock bajo]
-```
 
-**Listado de reservas**
-```
-[Header]
-[Menú lateral] [Botón: + Nueva reserva]
-  [Filtros: fecha desde/hasta | tipo | estado]
-  [Tabla: Fecha | Hora | Cliente | Tipo | Personas | Estado | Acciones]
-  [Estado vacío: "No hay reservas"]
-```
+**Operacion**
 
-**Formulario de reserva**
-```
-[Header]
-[Menú lateral]
-  [Form: Tipo (radio) | Fecha | Hora | Personas | Cliente (buscar/crear) | Observaciones]
-  [Botones: Guardar | Cancelar]
-  [Alerta si se supera capacidad del turno]
-```
+- Reservas.
+- Ventas.
+- Compras.
+- Gastos.
 
-*(El mismo patrón de header + menú lateral + contenido con tabla/formulario/tarjetas aplica a Clientes, Productos, Stock, Gastos, Ingresos y Usuarios.)*
+**Inventario**
+
+- Productos.
+- Categorias.
+- Stock.
+
+**Gestion**
+
+- Clientes.
+- Proveedores.
+
+**Analisis**
+
+- Reportes.
+
+**Administracion**
+
+- Usuarios.
+- Configuracion.
+
+El menu debe respetar los permisos. El usuario solo debe ver los modulos para los cuales tenga autorizacion.
+
+Rutas conceptuales:
+
+- `/login`
+- `/dashboard`
+- `/clientes`
+- `/categorias`
+- `/productos`
+- `/reservas`
+- `/proveedores`
+- `/compras`
+- `/stock` o `/movimientos-stock`
+- `/ventas`
+- `/gastos`
+- `/reportes`
+- `/usuarios`
+- `/configuracion`
+
+Todas las rutas excepto `/login` requieren sesion valida. Las rutas sensibles requieren permisos acordes al rol.
 
 ---
 
-## 9. Modelo de datos (resumen de entidades principales)
+## 14. Principios de formularios y uso del teclado
 
-- **Usuario**: id, nombre, email (único), password_hash, rol_id, activo, creado_en, actualizado_en.
-- **Rol**: id, nombre (`owner`/`employee`), descripción.
-- **Cliente**: id, nombre, apellido, teléfono, email, país/ciudad, observaciones, acepta_comunicaciones (bool), creado_en.
-- **TipoReserva**: id, nombre (`restaurante`/`degustacion`), duración_minutos, capacidad_default.
-- **Reserva**: id, tipo_reserva_id, cliente_id, fecha, hora, personas, estado, observaciones, creado_por, creado_en, actualizado_en.
-- **CategoriaProducto**: id, nombre.
-- **Producto**: id, nombre, categoria_id, varietal, cosecha, precio_venta, costo_estimado, stock_minimo, activo, creado_en. (stock_actual se calcula, no se almacena directo, o se mantiene como campo desnormalizado recalculado por trigger/servicio para performance).
-- **MovimientoStock**: id, producto_id, tipo (`ingreso`/`venta`/`consumo_interno`/`perdida`/`ajuste`), cantidad, fecha, usuario_id, motivo.
-- **CategoriaGasto**: id, nombre.
-- **Gasto**: id, fecha, concepto, categoria_id, importe, medio_pago, proveedor, estado_pago, observaciones, creado_por.
-- **Ingreso**: id, fecha, concepto, origen, importe, medio_pago, cliente_id (opcional), reserva_id (opcional), creado_por.
+### Formularios
 
-Todas las entidades incluyen `creado_en` y `actualizado_en`; borrado lógico mediante campo `activo` o `estado` según corresponda.
+Principios generales de UX:
+
+- Buscar antes de escribir.
+- Autocompletar cuando exista informacion registrada.
+- Reutilizar datos existentes.
+- Calcular automaticamente importes derivados.
+- Minimizar la cantidad de campos obligatorios.
+- Evitar solicitar informacion que el sistema ya conoce.
+- Utilizar selectores o buscadores en lugar de texto libre cuando corresponda.
+- Mostrar validaciones de manera clara.
+
+Ejemplos:
+
+- **Venta:** buscar productos, mostrar stock disponible, ingresar cantidad, utilizar el precio definido, calcular subtotal y total.
+- **Compra:** buscar proveedor, agregar productos o conceptos, ingresar cantidad y precio, calcular subtotal y total.
+- **Reserva:** seleccionar cliente, reutilizar telefono y correo, completar solamente los datos propios de la reserva.
+
+El guardado progresivo o recuperacion de formularios incompletos queda documentado como mejora futura, no como requisito del MVP.
+
+### Uso del teclado
+
+Estandar de UX:
+
+- `Tab` recorre los campos en un orden logico.
+- Los buscadores permiten navegar con flechas.
+- `Enter` selecciona la opcion resaltada en un buscador.
+- `Escape` cierra un modal o cancela una accion.
+- Si existen cambios sin guardar, se debe solicitar confirmacion antes de cerrar.
+- `Enter` no debe guardar accidentalmente un formulario si el foco se encuentra en un campo donde pueda generar una accion incorrecta.
+
+Los atajos globales, como `Ctrl+N`, `Ctrl+S`, `Ctrl+F` o una busqueda global, quedan como mejora futura y no como requisito del MVP.
 
 ---
 
-## 10. Relaciones entre entidades (Mermaid)
+## 15. Historias de usuario
+
+### 15.1 Autenticacion
+
+**Objetivo:** permitir el acceso seguro al sistema y aplicar permisos segun rol.
+
+**HU-AUT-01** Como usuario, quiero iniciar sesion con email y contrasena para acceder a las funciones autorizadas.
+
+- Criterios: rechaza credenciales invalidas con mensaje claro; redirige al Dashboard tras login exitoso; mantiene sesion segun configuracion.
+
+**HU-AUT-02** Como usuario, quiero cerrar sesion para proteger el acceso al sistema.
+
+- Criterios: logout visible; invalida la sesion local; redirige a `/login`.
+
+### 15.2 Dashboard
+
+**Objetivo:** mostrar en pocos segundos el estado operativo del dia.
+
+**HU-DAS-01** Como administrador, quiero ver reservas, ventas, gastos y stock bajo para entender como esta la bodega hoy.
+
+- Criterios: muestra indicadores del dia, proximas reservas, alertas y actividad reciente segun permisos.
+
+**HU-DAS-02** Como empleado, quiero ver acciones rapidas relacionadas con mi rol para operar sin navegar de mas.
+
+- Criterios: muestra accesos permitidos; oculta modulos no autorizados.
+
+### 15.3 Clientes
+
+**Objetivo:** centralizar los datos de personas que reservan, compran o interactuan con la bodega.
+
+**HU-CLI-01** Como empleado, quiero registrar un cliente nuevo para asociarlo a reservas o ventas.
+
+- Criterios: valida datos obligatorios; advierte posibles duplicados por email o telefono.
+
+**HU-CLI-02** Como empleado, quiero buscar clientes existentes para reutilizar sus datos.
+
+- Criterios: permite buscar por nombre, telefono o email; muestra resultados claros.
+
+**HU-CLI-03** Como usuario autorizado, quiero consultar la ficha de un cliente para ver sus datos e historial relevante.
+
+- Criterios: muestra datos de contacto, observaciones, reservas y operaciones asociadas cuando corresponda.
+
+### 15.4 Categorias
+
+**Objetivo:** ordenar productos y gastos mediante clasificaciones administrables.
+
+**HU-CAT-01** Como administrador, quiero crear categorias para clasificar productos.
+
+- Criterios: nombre obligatorio; evita duplicados evidentes; permite activar o desactivar categorias.
+
+**HU-CAT-02** Como usuario autorizado, quiero filtrar productos por categoria para encontrar informacion rapidamente.
+
+- Criterios: los listados permiten filtrar por categoria activa.
+
+### 15.5 Productos
+
+**Objetivo:** gestionar una entidad unica para productos terminados e insumos.
+
+**HU-PRO-01** Como administrador, quiero crear productos con tipo, categoria y comportamiento comercial para usarlos en compras, ventas y stock.
+
+- Criterios: permite definir `tipoProducto`, `seVende`, `seCompra` y `controlaStock`; el stock inicial no se edita directamente.
+
+**HU-PRO-02** Como usuario autorizado, quiero consultar el stock calculado de un producto para saber su disponibilidad.
+
+- Criterios: el stock mostrado surge de movimientos; resalta stock bajo.
+
+**HU-PRO-03** Como administrador, quiero desactivar productos para que no aparezcan en nuevas operaciones sin borrar su historial.
+
+- Criterios: baja logica; mantiene relaciones historicas.
+
+### 15.6 Reservas
+
+**Objetivo:** gestionar visitas de restaurante o degustacion con estado y cliente asociado.
+
+**HU-RES-01** Como empleado, quiero crear una reserva seleccionando un cliente existente o registrando uno nuevo.
+
+- Criterios: pide fecha, hora, personas y observaciones opcionales; reutiliza datos del cliente existente.
+
+**HU-RES-02** Como empleado, quiero confirmar reservas pendientes para organizar la atencion.
+
+- Criterios: cambia de Pendiente a Confirmada; registra usuario y fecha de la operacion cuando corresponda.
+
+**HU-RES-03** Como empleado, quiero consultar proximas reservas para preparar la operacion diaria.
+
+- Criterios: permite filtrar por fecha y estado; identifica pendientes de confirmacion.
+
+**HU-RES-04** Como empleado, quiero cancelar o marcar asistencia para mantener actualizado el historial.
+
+- Criterios: usa estados; no elimina la reserva.
+
+### 15.7 Proveedores
+
+**Objetivo:** mantener los datos de contacto e identificacion de proveedores.
+
+**HU-PRV-01** Como usuario autorizado, quiero registrar proveedores para asociarlos a compras.
+
+- Criterios: permite nombre, contacto, identificacion fiscal y observaciones.
+
+**HU-PRV-02** Como usuario autorizado, quiero buscar proveedores existentes al cargar una compra.
+
+- Criterios: permite buscar y seleccionar proveedor sin reescribir datos.
+
+### 15.8 Compras
+
+**Objetivo:** registrar adquisiciones operativas y generar stock solo cuando corresponda.
+
+**HU-COM-01** Como usuario autorizado, quiero registrar una compra con proveedor, items, cantidades y precios.
+
+- Criterios: calcula subtotales y total; admite productos registrados y conceptos de texto libre.
+
+**HU-COM-02** Como usuario autorizado, quiero que la compra genere entradas de stock solo para productos que controlan stock.
+
+- Criterios: crea movimientos de entrada para esos items; no crea movimientos para servicios, conceptos libres o productos sin stock.
+
+**HU-COM-03** Como administrador, quiero consultar compras por periodo o proveedor para controlar adquisiciones.
+
+- Criterios: filtros por fecha, proveedor y estado cuando corresponda.
+
+### 15.9 Stock
+
+**Objetivo:** reflejar inventario mediante movimientos inmutables y trazables.
+
+**HU-STO-01** Como usuario autorizado, quiero ver movimientos de stock para auditar entradas, salidas y correcciones.
+
+- Criterios: lista fecha, producto, cantidad, tipo, usuario, origen y observaciones.
+
+**HU-STO-02** Como usuario autorizado, quiero registrar un ajuste inicial o correccion para corregir inventario sin editar movimientos previos.
+
+- Criterios: crea un nuevo movimiento; valida que el resultado no sea negativo.
+
+**HU-STO-03** Como usuario autorizado, quiero recibir alertas de stock bajo para reponer a tiempo.
+
+- Criterios: compara stock calculado con minimo definido en producto.
+
+### 15.10 Ventas
+
+**Objetivo:** registrar operaciones de venta con detalle de productos, importes y salida automatica de stock.
+
+**HU-VEN-01** Como usuario autorizado, quiero crear una venta agregando productos y cantidades.
+
+- Criterios: muestra stock disponible; calcula subtotales y total; permite cliente opcional.
+
+**HU-VEN-02** Como sistema, quiero impedir ventas sin stock suficiente para mantener inventario consistente.
+
+- Criterios: valida antes de guardar; no permite stock negativo; informa el producto sin disponibilidad.
+
+**HU-VEN-03** Como sistema, quiero generar movimientos de salida al confirmar una venta.
+
+- Criterios: genera movimientos solo para productos con `controlaStock`; registra usuario, fecha y origen.
+
+### 15.11 Gastos
+
+**Objetivo:** registrar egresos administrativos o financieros separados de compras.
+
+**HU-GAS-01** Como usuario autorizado, quiero registrar un gasto con categoria, concepto, importe y fecha.
+
+- Criterios: valida importe positivo; permite estado pagado o pendiente cuando corresponda.
+
+**HU-GAS-02** Como administrador, quiero consultar gastos por periodo y categoria para controlar egresos.
+
+- Criterios: filtros por fecha, categoria y estado.
+
+### 15.12 Reportes
+
+**Objetivo:** centralizar analisis de ventas, compras, gastos y stock.
+
+**HU-REP-01** Como administrador, quiero analizar ventas por periodo para evaluar resultados.
+
+- Criterios: filtros de fecha; totales e indicadores coherentes con ventas registradas.
+
+**HU-REP-02** Como administrador, quiero analizar compras y gastos para entender egresos.
+
+- Criterios: separa compras de gastos; permite comparar por periodo.
+
+**HU-REP-03** Como usuario autorizado, quiero consultar informacion de stock para detectar productos bajos o movimientos relevantes.
+
+- Criterios: muestra stock calculado y alertas.
+
+### 15.13 Usuarios
+
+**Objetivo:** administrar accesos al sistema.
+
+**HU-USU-01** Como administrador, quiero crear usuarios para que el equipo opere el CRM.
+
+- Criterios: email unico; rol obligatorio; contrasena con requisitos minimos.
+
+**HU-USU-02** Como administrador, quiero desactivar usuarios para revocar accesos sin borrar historial.
+
+- Criterios: baja logica; conserva operaciones realizadas.
+
+### 15.14 Configuracion
+
+**Objetivo:** administrar parametros generales sin modificar codigo.
+
+**HU-CON-01** Como administrador, quiero configurar capacidades, duraciones y parametros generales del negocio.
+
+- Criterios: cambios disponibles solo para usuarios autorizados; valores validados.
+
+**HU-CON-02** Como administrador, quiero configurar datos generales de la bodega.
+
+- Criterios: permite mantener informacion basica del negocio usada por la aplicacion.
+
+---
+
+## 16. Flujos principales
+
+### Clientes
+
+1. El usuario ingresa a Clientes.
+2. Busca si el cliente ya existe.
+3. Si existe, abre su ficha o lo selecciona para otra operacion.
+4. Si no existe, carga los datos minimos y guarda.
+5. El sistema advierte posibles duplicados sin borrar historial.
+
+### Categorias
+
+1. El usuario autorizado ingresa a Categorias.
+2. Crea o edita una categoria.
+3. El sistema valida nombre obligatorio y duplicados evidentes.
+4. La categoria queda disponible para productos o gastos, segun corresponda.
+
+### Productos
+
+1. El usuario ingresa a Productos.
+2. Carga nombre, categoria, tipo y propiedades funcionales.
+3. Define si se vende, se compra y si controla stock.
+4. El sistema guarda el producto sin permitir editar stock directo.
+5. El stock se consulta a partir de movimientos.
+
+### Reservas
+
+1. El usuario entra a Reservas y selecciona Nueva reserva.
+2. Busca un cliente existente o registra uno nuevo.
+3. Completa fecha, hora, cantidad de personas y observaciones.
+4. El sistema valida capacidad y muestra advertencias si corresponde.
+5. Guarda la reserva con estado inicial Pendiente.
+6. Luego puede confirmarse, completarse, cancelarse o marcarse como No asistio.
+
+### Proveedores
+
+1. El usuario ingresa a Proveedores.
+2. Busca si el proveedor ya existe.
+3. Crea o actualiza datos de contacto e identificacion.
+4. El proveedor queda disponible para compras.
+
+### Compras
+
+1. El usuario entra a Compras y crea una nueva compra.
+2. Selecciona proveedor cuando corresponda.
+3. Agrega items con productos registrados o conceptos libres.
+4. Carga cantidades y precios.
+5. El sistema calcula subtotales y total.
+6. Al guardar, genera movimientos de entrada solo para items asociados a productos con `controlaStock`.
+7. Los items sin stock o de texto libre quedan registrados en la compra sin afectar inventario.
+
+### Stock
+
+1. El usuario consulta el historial de movimientos.
+2. El sistema muestra movimientos con usuario, fecha, producto, cantidad, tipo y origen.
+3. Para corregir un error, el usuario crea un nuevo movimiento correctivo.
+4. El sistema valida que el resultado no deje stock negativo.
+5. No se editan ni eliminan movimientos anteriores.
+
+### Ventas
+
+1. El usuario entra a Ventas y crea una venta.
+2. Selecciona cliente opcional.
+3. Busca productos y agrega cantidades.
+4. El sistema muestra stock disponible y precios.
+5. Calcula subtotales y total.
+6. Antes de guardar, valida disponibilidad para productos con `controlaStock`.
+7. Si hay stock suficiente, guarda la venta y genera movimientos automaticos de salida.
+8. Si no hay stock suficiente, rechaza la operacion con mensaje claro.
+
+### Gastos
+
+1. El usuario entra a Gastos.
+2. Carga fecha, categoria, concepto, importe y estado cuando corresponda.
+3. El sistema valida datos obligatorios.
+4. Guarda el gasto separado de compras.
+
+### Dashboard
+
+1. Al ingresar al sistema, el usuario ve indicadores del dia segun su rol.
+2. El sistema muestra proximas reservas, alertas y actividad reciente.
+3. Las acciones rapidas visibles dependen de permisos.
+
+### Reportes
+
+1. El usuario autorizado ingresa a Reportes.
+2. Selecciona periodo y filtros.
+3. El sistema muestra analisis de ventas, compras, gastos y stock.
+4. Los datos provienen de las operaciones registradas y del stock calculado.
+
+---
+
+## 17. Mapa de pantallas
+
+1. **Login:** formulario de email y contrasena.
+2. **Dashboard:** indicadores operativos, proximas reservas, alertas, actividad reciente y acciones rapidas.
+3. **Clientes:** listado, busqueda, alta, edicion y ficha.
+4. **Categorias:** administracion de categorias.
+5. **Productos:** listado, busqueda, alta, edicion, estado, categoria y stock calculado.
+6. **Reservas:** listado por fecha/estado, alta, detalle, confirmacion, cancelacion y asistencia.
+7. **Proveedores:** listado, busqueda, alta, edicion y baja logica.
+8. **Compras:** listado, alta con detalle, proveedor, items, totales e impacto de stock cuando corresponda.
+9. **Stock:** movimientos, filtros, stock calculado, alertas y correcciones.
+10. **Ventas:** listado, alta con detalle, cliente opcional, totales y validacion de stock.
+11. **Gastos:** listado, alta, categorias, estados y filtros.
+12. **Reportes:** analisis por periodo de ventas, compras, gastos y stock.
+13. **Usuarios:** administracion de usuarios y roles.
+14. **Configuracion:** parametros generales del sistema y datos de la bodega.
+
+---
+
+## 18. Modelo de datos conceptual
+
+El modelo conceptual minimo incluye:
+
+- **Rol:** id, nombre, descripcion, permisos conceptuales.
+- **Usuario:** id, nombre, email unico, password hash, rol, activo, fechas de auditoria.
+- **Cliente:** id, nombre, apellido, telefono, email, ubicacion, observaciones, activo, fechas de auditoria.
+- **Categoria:** id, nombre, tipo o ambito cuando corresponda, activo.
+- **Producto:** id, nombre, categoria, `tipoProducto`, `seVende`, `seCompra`, `controlaStock`, precio de venta, costo estimado, stock minimo, activo.
+- **Reserva:** id, cliente, fecha, hora, cantidad de personas, estado, observaciones, usuario creador, fechas de auditoria.
+- **Proveedor:** id, nombre o razon social, contacto, email, telefono, direccion, identificacion fiscal, observaciones, activo.
+- **Compra:** id, proveedor opcional, fecha, usuario, subtotal, total, observaciones, estado cuando corresponda.
+- **CompraDetalle:** id, compra, producto opcional, descripcion libre opcional, cantidad, precio unitario, subtotal.
+- **MovimientoStock:** id, producto, tipo de movimiento, cantidad, fecha, usuario, origen, `origenId`, observaciones.
+- **Venta:** id, cliente opcional, fecha, usuario, subtotal, total, observaciones, estado cuando corresponda.
+- **VentaDetalle:** id, venta, producto, cantidad, precio unitario, subtotal.
+- **Gasto:** id, fecha, concepto, categoria, importe, medio de pago, estado, observaciones, usuario creador.
+
+No existe una entidad **Ingreso** independiente en el MVP.
+
+### Relaciones conceptuales
 
 ```mermaid
 erDiagram
-    ROL ||--o{ USUARIO : tiene
+    ROL ||--o{ USUARIO : asigna
     USUARIO ||--o{ RESERVA : crea
-    USUARIO ||--o{ MOVIMIENTO_STOCK : registra
+    USUARIO ||--o{ COMPRA : registra
+    USUARIO ||--o{ VENTA : registra
     USUARIO ||--o{ GASTO : registra
-    USUARIO ||--o{ INGRESO : registra
+    USUARIO ||--o{ MOVIMIENTO_STOCK : registra
     CLIENTE ||--o{ RESERVA : realiza
-    TIPO_RESERVA ||--o{ RESERVA : clasifica
-    RESERVA ||--o| INGRESO : "puede generar"
-    CATEGORIA_PRODUCTO ||--o{ PRODUCTO : clasifica
+    CLIENTE ||--o{ VENTA : "puede asociarse"
+    CATEGORIA ||--o{ PRODUCTO : clasifica
+    CATEGORIA ||--o{ GASTO : clasifica
+    PRODUCTO ||--o{ COMPRA_DETALLE : "puede integrar"
+    PRODUCTO ||--o{ VENTA_DETALLE : integra
     PRODUCTO ||--o{ MOVIMIENTO_STOCK : afecta
-    CATEGORIA_GASTO ||--o{ GASTO : clasifica
-    CLIENTE ||--o{ INGRESO : "asociado a"
+    PROVEEDOR ||--o{ COMPRA : "puede asociarse"
+    COMPRA ||--o{ COMPRA_DETALLE : contiene
+    COMPRA ||--o{ MOVIMIENTO_STOCK : "puede originar"
+    VENTA ||--o{ VENTA_DETALLE : contiene
+    VENTA ||--o{ MOVIMIENTO_STOCK : origina
 ```
+
+Este documento no define ni modifica el schema de Prisma ni migraciones. La implementacion fisica debe respetar este modelo conceptual cuando corresponda a cada etapa.
 
 ---
 
-## 11. API REST (resumen por recurso)
+## 19. API REST conceptual
 
-**Auth**
-- `POST /api/auth/login` — body: email, password → devuelve token. Rol: público.
-- `POST /api/auth/logout` — Rol: autenticado.
+La API REST debe exponerse desde NestJS y ser consumida por el frontend. El frontend no debe conectarse directamente a Supabase.
 
-**Reservas**
-- `GET /api/reservas?desde=&hasta=&tipo=&estado=` — Rol: owner/employee.
-- `POST /api/reservas` — crea reserva. Rol: owner/employee.
+Recursos conceptuales:
+
+- `auth`
+- `clientes`
+- `categorias`
+- `productos`
+- `reservas`
+- `proveedores`
+- `compras`
+- `stock` o `movimientos-stock`
+- `ventas`
+- `gastos`
+- `reportes`
+- `usuarios`
+- `configuracion`
+- `dashboard`
+
+Endpoints orientativos:
+
+- `POST /api/auth/login`
+- `POST /api/auth/logout`
+- `GET /api/dashboard`
+- `GET /api/clientes`
+- `POST /api/clientes`
+- `GET /api/clientes/:id`
+- `PUT /api/clientes/:id`
+- `GET /api/categorias`
+- `POST /api/categorias`
+- `PUT /api/categorias/:id`
+- `GET /api/productos`
+- `POST /api/productos`
+- `GET /api/productos/:id`
+- `PUT /api/productos/:id`
+- `GET /api/reservas`
+- `POST /api/reservas`
 - `GET /api/reservas/:id`
 - `PUT /api/reservas/:id`
 - `PATCH /api/reservas/:id/confirmar`
 - `PATCH /api/reservas/:id/cancelar`
 - `PATCH /api/reservas/:id/completar`
-
-**Clientes**
-- `GET /api/clientes?buscar=`
-- `POST /api/clientes`
-- `GET /api/clientes/:id`
-- `PUT /api/clientes/:id`
-
-**Productos**
-- `GET /api/productos?categoria=&activo=`
-- `POST /api/productos`
-- `PUT /api/productos/:id`
-
-**Stock**
-- `GET /api/movimientos-stock?producto_id=&tipo=&desde=&hasta=`
-- `POST /api/movimientos-stock` — valida stock disponible en salidas.
-
-**Gastos**
-- `GET /api/gastos?desde=&hasta=&categoria=`
+- `GET /api/proveedores`
+- `POST /api/proveedores`
+- `PUT /api/proveedores/:id`
+- `GET /api/compras`
+- `POST /api/compras`
+- `GET /api/compras/:id`
+- `GET /api/movimientos-stock`
+- `POST /api/movimientos-stock`
+- `GET /api/ventas`
+- `POST /api/ventas`
+- `GET /api/ventas/:id`
+- `GET /api/gastos`
 - `POST /api/gastos`
+- `GET /api/reportes`
+- `GET /api/usuarios`
+- `POST /api/usuarios`
+- `PATCH /api/usuarios/:id/desactivar`
+- `GET /api/configuracion`
+- `PUT /api/configuracion`
 
-**Ingresos**
-- `GET /api/ingresos?desde=&hasta=&origen=`
-- `POST /api/ingresos`
+Errores comunes:
 
-**Usuarios**
-- `GET /api/usuarios` — Rol: owner.
-- `POST /api/usuarios` — Rol: owner.
-- `PATCH /api/usuarios/:id/desactivar` — Rol: owner.
+- `400` validacion.
+- `401` no autenticado.
+- `403` sin permiso.
+- `404` no encontrado.
+- `409` conflicto, por ejemplo stock insuficiente.
 
-**Dashboard**
-- `GET /api/dashboard?desde=&hasta=` — devuelve indicadores agregados.
-
-Errores comunes en todos los endpoints: `400` validación, `401` no autenticado, `403` sin permiso, `404` no encontrado, `409` conflicto (ej. stock insuficiente).
-
----
-
-## 12. Reglas de negocio (síntesis)
-
-- Una reserva no puede crearse con fecha/hora en el pasado.
-- El cambio de estado de reserva sigue el flujo: Pendiente → Confirmada → Completada, o cualquiera → Cancelada. No se puede volver de Completada/Cancelada a otro estado.
-- El stock actual de un producto es siempre la suma de sus movimientos; no se edita manualmente.
-- No se permite una salida de stock que deje el total en negativo.
-- Los gastos e ingresos no se eliminan, solo pueden marcarse con un estado (ej. gasto anulado).
-- Solo el dueño puede crear usuarios y acceder a configuración.
-- La baja de clientes, productos y usuarios es lógica, no física.
+La definicion detallada de DTOs y contratos se realizara en las etapas de implementacion correspondientes.
 
 ---
 
-## 13. Validaciones
+## 20. Reglas de negocio
 
-- **Frontend**: campos obligatorios, formatos (email, números positivos), feedback inmediato antes de enviar.
-- **Backend**: repite todas las validaciones del frontend (nunca confía solo en el cliente), además de reglas de negocio (capacidad, stock disponible, transiciones de estado válidas, unicidad de email).
-- **Base de datos**: constraints de tipo (`NOT NULL`, `UNIQUE` en email), claves foráneas con integridad referencial, checks básicos (cantidad > 0).
-
----
-
-## 14. Arquitectura propuesta
-
-**Frontend**: SPA en React + Vite + JavaScript, React Router para rutas, Tailwind CSS para estilos, manejo de estado con Context API + hooks (sin Redux, innecesario para el MVP), llamadas a API centralizadas en una capa `services/`.
-
-**Backend**: API REST recomendada en **Node.js con NestJS**. Comparación breve:
-- *Express*: muy simple para arrancar, pero requiere armar a mano la estructura de capas (controlador/servicio/repositorio), lo que puede derivar en desorden si no hay disciplina.
-- *NestJS*: ya impone una arquitectura modular (controllers, services, providers, DTOs con validación integrada vía `class-validator`), tiene inyección de dependencias, y facilita mucho el crecimiento futuro sin reescribir. La curva de entrada es un poco mayor que Express, pero se paga rápido en mantenibilidad.
-- *Spring Boot*: robusto y probado, pero implica un stack más pesado (JVM) y mayor tiempo de configuración para un equipo/AI-agent que trabajará principalmente en JS/TS en el frontend; mezclar dos ecosistemas de lenguaje agrega fricción sin beneficio claro en este MVP.
-
-**Recomendación: NestJS + TypeScript**, por la afinidad con el frontend (mismo lenguaje), estructura en capas ya integrada, y buen soporte para crecer hacia funcionalidades futuras sin reescritura.
-
-**Base de datos**: PostgreSQL en producción; SQLite o PostgreSQL local en desarrollo. ORM recomendado: Prisma (migraciones simples, tipado end-to-end).
-
-**Hosting de la base de datos en producción**: se recomienda **Supabase** como proveedor de PostgreSQL gestionado. Al ser Postgres estándar por debajo, es compatible sin cambios con Prisma y con el modelo de datos ya definido, y evita administrar servidor, backups y actualizaciones manualmente, algo valioso para un MVP sin equipo de infraestructura dedicado. Se recomienda usarlo únicamente como base de datos (conectando `DATABASE_URL` como cualquier Postgres), sin adoptar por ahora Supabase Auth ni Row Level Security, para no duplicar ni reemplazar el módulo de autenticación y roles ya diseñado en NestJS (secciones 4, 11, 14 y 16). Migrar a un uso más completo de Supabase (Auth, RLS, funciones) queda como una decisión de arquitectura para una versión futura, no para el MVP.
-
-**Autenticación**: JWT con expiración configurable, guardado en almacenamiento seguro del cliente; guards de NestJS para rutas protegidas y por rol.
-
-**Manejo de errores**: filtro global de excepciones en NestJS que devuelve un formato de error consistente (`{ statusCode, message, error }`).
-
-**Variables de entorno**: `.env` con `DATABASE_URL`, `JWT_SECRET`, `JWT_EXPIRATION`, `PORT`, `CORS_ORIGIN`.
-
-**Migraciones y datos iniciales**: migraciones versionadas con Prisma; script de seed con datos de demostración (sección 17).
+- No se permite stock negativo.
+- El stock se calcula mediante movimientos.
+- Los movimientos de stock son inmutables.
+- Las correcciones de stock se realizan mediante nuevos movimientos correctivos.
+- Las ventas generan salidas automaticas de stock para productos que controlan stock.
+- Las compras generan entradas de stock solo para productos que controlan stock.
+- Una compra puede incluir productos sin stock o conceptos libres sin afectar inventario.
+- Las ventas deben validar disponibilidad antes de confirmarse.
+- Cada operacion relevante debe registrar usuario, fecha y origen.
+- El sistema debe aplicar permisos segun rol.
+- El menu y las acciones visibles deben respetar autorizaciones.
+- Las reservas no se eliminan fisicamente; se gestionan por estado.
+- Los registros con relaciones historicas relevantes no deben eliminarse fisicamente.
+- Las bajas logicas se aplican cuando corresponda.
+- El backend debe validar reglas de negocio aunque el frontend tambien valide.
+- Gastos y Compras son modulos separados; no se debe duplicar una operacion sin regla explicita.
+- Configuracion y gestion de usuarios quedan restringidas a usuarios autorizados.
 
 ---
 
-## 15. Estructura de carpetas
+## 21. Validaciones
 
-**Backend (NestJS)**
+### Frontend
+
+- Campos obligatorios.
+- Formatos de email, fecha, hora y numeros positivos.
+- Feedback inmediato y mensajes claros.
+- Validacion de cantidades y precios.
+- Validacion visual de stock disponible en ventas.
+
+### Backend
+
+- Repetir todas las validaciones criticas del frontend.
+- Validar permisos y roles.
+- Validar transiciones de estado.
+- Validar capacidad de reservas.
+- Validar stock suficiente.
+- Validar que una compra genere movimientos solo cuando corresponda.
+- Usar DTOs y `class-validator`.
+
+### Base de datos
+
+- Claves primarias y foraneas.
+- Unicidad donde corresponda, por ejemplo email de usuario.
+- Restricciones basicas de integridad.
+- Persistencia de relaciones historicas.
+
+---
+
+## 22. Arquitectura aprobada
+
+**Frontend:** SPA con React, Vite, JavaScript y Tailwind CSS. El frontend consume exclusivamente la API REST del backend. Las llamadas a la API deben centralizarse en servicios.
+
+**Backend:** API REST con NestJS, TypeScript, Prisma y validacion mediante DTOs con `class-validator`. NestJS contiene logica de negocio, validaciones y autorizacion.
+
+**Base de datos:** PostgreSQL. Prisma es la unica capa de acceso a datos. Las migraciones deben versionarse con Prisma durante las tareas de desarrollo que correspondan.
+
+**Supabase:** proveedor gestionado de PostgreSQL. No reemplaza autenticacion, autorizacion ni logica de negocio.
+
+**Autenticacion:** JWT con expiracion configurable, guards de NestJS para rutas protegidas y control por rol.
+
+**Variables de entorno:** `DATABASE_URL`, `JWT_SECRET`, `JWT_EXPIRATION`, `PORT`, `CORS_ORIGIN`.
+
+No se deben incorporar microservicios ni dependencias innecesarias para el MVP.
+
+---
+
+## 23. Estructura de carpetas conceptual
+
+La estructura real del repositorio utiliza:
+
+```text
+CRM-bodega/
+  01-backend/
+  02-frontend/
+  docs/
 ```
-backend/
+
+Backend:
+
+```text
+01-backend/
   src/
     auth/
-      auth.controller.ts
-      auth.service.ts
-      auth.module.ts
-      guards/
-      strategies/
     usuarios/
-    reservas/
     clientes/
+    categorias/
     productos/
+    reservas/
+    proveedores/
+    compras/
     stock/
+    ventas/
     gastos/
-    ingresos/
+    reportes/
     dashboard/
+    configuracion/
     common/
-      filters/
-      pipes/
-      decorators/
     prisma/
-      prisma.service.ts
-    main.ts
-    app.module.ts
   prisma/
     schema.prisma
     migrations/
-    seed.ts
-  .env.example
-  package.json
 ```
-
-**Frontend (React + Vite)**
-```
-frontend/
-  src/
-    pages/
-      Login/
-      Dashboard/
-      Reservas/
-      Clientes/
-      Productos/
-      Stock/
-      Gastos/
-      Ingresos/
-      Usuarios/
-      Configuracion/
-    components/
-      layout/ (Sidebar, Header)
-      ui/ (Button, Table, Modal, FormField, Alert)
-    services/
-      api.ts
-      reservas.service.ts
-      clientes.service.ts
-      ...
-    context/
-      AuthContext.jsx
-    routes/
-      AppRoutes.jsx
-      ProtectedRoute.jsx
-    types/
-    hooks/
-    App.jsx
-    main.jsx
-  index.html
-  package.json
-```
-
----
-
-## 16. Seguridad mínima
-
-- Login con email/contraseña; contraseñas hasheadas con bcrypt.
-- Tokens JWT con expiración; refresco simple o re-login al expirar (sin refresh token complejo en el MVP).
-- Rutas del frontend protegidas por `ProtectedRoute` que verifica sesión y rol.
-- Autorización por rol en cada endpoint sensible del backend (guards de NestJS).
-- Validación de entradas con DTOs y `class-validator` en cada endpoint.
-- CORS restringido al dominio del frontend.
-- Variables sensibles (`JWT_SECRET`, `DATABASE_URL`) solo en `.env`, nunca en el repositorio.
-
----
-
-## 17. Datos de prueba
-
-- **Usuarios**: María Fernández (dueña, owner), Lucas Gómez (empleado).
-- **Clientes**: Sofía Martínez, Carlos Rodríguez, John Smith (turista), Ana Belén Torres.
-- **Productos**: Malbec Reserva 2021, Cabernet Franc 2022, Espumante Extra Brut, Tabla de quesos regionales, Remera bodega (merchandising).
-- **Reservas**: degustación para 4 personas mañana 11:00 (Confirmada); almuerzo restaurante para 2 personas hoy 13:00 (Pendiente).
-- **Movimientos de stock**: ingreso de 120 botellas Malbec Reserva; venta de 6 botellas en degustación.
-- **Gastos**: pago a proveedor de insumos de cocina, categoría Insumos.
-- **Ingresos**: venta de degustación grupal, origen Degustaciones.
-
----
-
-## 18. Plan de implementación
-
-1. **Etapa 0 — Base del proyecto**: repos, estructura de carpetas, configuración de backend/frontend, conexión a base de datos, esquema Prisma inicial. *Resultado verificable*: backend levanta y responde `GET /health`; frontend levanta y muestra pantalla en blanco.
-2. **Etapa 1 — Autenticación**: modelo Usuario/Rol, login, JWT, guards, pantalla de login, contexto de auth en frontend. *Verificable*: login funcional con usuario de prueba.
-3. **Etapa 2 — Layout y navegación**: sidebar, rutas protegidas, estructura de páginas vacías. *Verificable*: navegación entre secciones respetando roles.
-4. **Etapa 3 — Clientes**: CRUD completo backend + frontend. *Verificable*: crear, listar, editar cliente end-to-end.
-5. **Etapa 4 — Productos y categorías**: CRUD completo. *Verificable*: crear producto y verlo listado.
-6. **Etapa 5 — Stock**: movimientos, cálculo de stock actual, validaciones de negativo. *Verificable*: ingreso y salida reflejan stock correcto.
-7. **Etapa 6 — Reservas**: CRUD, estados, validación de capacidad. *Verificable*: ciclo completo pendiente→confirmada→completada/cancelada.
-8. **Etapa 7 — Gastos e ingresos**: CRUD de ambos. *Verificable*: registro y listado con filtros.
-9. **Etapa 8 — Dashboard**: agregación de indicadores. *Verificable*: valores coinciden con datos cargados manualmente.
-10. **Etapa 9 — Usuarios y configuración**: alta de empleados, parámetros generales. *Verificable*: dueño crea empleado y este puede loguearse.
-11. **Etapa 10 — Pulido UX y datos de demo**: seed de datos, mensajes de error/éxito, estados vacíos, responsive. *Verificable*: recorrido completo del sistema sin errores visuales.
-
-Cada etapa depende de la anterior; el orden permite tener siempre un sistema funcional y probable en cada paso.
-
----
-
-## 19. Backlog para Codex (extracto representativo)
-
-> El backlog completo sigue este mismo formato para cada módulo; se listan las tareas fundacionales como ejemplo estructurado y reproducible por Codex.
-
-**T-001 — Setup inicial del backend**
-- Construir: proyecto NestJS con TypeScript, Prisma configurado, conexión a PostgreSQL/SQLite, endpoint `GET /health`.
-- Archivos: `backend/src/main.ts`, `backend/src/app.module.ts`, `backend/prisma/schema.prisma`.
-- Criterios de aceptación: `npm run start:dev` levanta sin errores; `GET /health` devuelve `200`.
-- Dependencias: ninguna.
-
-**T-002 — Setup inicial del frontend**
-- Construir: proyecto Vite + React + JavaScript + Tailwind, estructura de carpetas base.
-- Archivos: `frontend/` completo según sección 15.
-- Criterios: `npm run dev` levanta y muestra pantalla base.
-- Dependencias: ninguna.
-
-**T-003 — Modelo de datos completo en Prisma**
-- Construir: `schema.prisma` con todas las entidades de la sección 9, migraciones iniciales, seed básico.
-- Archivos: `backend/prisma/schema.prisma`, `backend/prisma/seed.ts`.
-- Criterios: `npx prisma migrate dev` corre sin errores; seed inserta datos de la sección 17.
-- Dependencias: T-001.
-
-**T-004 — Módulo de autenticación**
-- Construir: entidades Usuario/Rol, endpoint de login, JWT, guards de rol.
-- Archivos: `backend/src/auth/*`.
-- Criterios: login con usuario seed devuelve token válido; endpoint protegido rechaza sin token.
-- Dependencias: T-003.
-
-**T-005 — Pantalla de login y contexto de auth (frontend)**
-- Construir: página `/login`, `AuthContext`, `ProtectedRoute`.
-- Archivos: `frontend/src/pages/Login/*`, `frontend/src/context/AuthContext.jsx`, `frontend/src/routes/*`.
-- Criterios: login exitoso redirige a `/dashboard`; ruta protegida redirige a `/login` sin sesión.
-- Dependencias: T-002, T-004.
-
-*(El backlog continúa con tareas equivalentes para Clientes T-010 a T-013, Productos T-020 a T-023, Stock T-030 a T-033, Reservas T-040 a T-045, Gastos T-050 a T-052, Ingresos T-060 a T-062, Dashboard T-070 a T-071, Usuarios T-080 a T-082, siguiendo el mismo nivel de detalle y una tarea por archivo/funcionalidad concreta, tal como se detalla en el plan de implementación de la sección 18.)*
-
----
-
-## 20. Prompts para Codex (ejemplos)
-
-**Prompt para T-001**
-```
-Contexto: estamos iniciando el backend de un CRM para una bodega, usando NestJS + TypeScript + Prisma.
-Tarea: crear el proyecto backend en la carpeta backend/, con un endpoint GET /health que devuelva {status:"ok"}.
-No modifiques ni crees nada relacionado al frontend.
-Al finalizar: verificá que el proyecto compila y que npm run start:dev levanta sin errores.
-Entregá un resumen de los archivos creados y cualquier decisión o supuesto que hayas tomado.
-```
-
-**Prompt para T-003**
-```
-Contexto: backend NestJS con Prisma ya inicializado (ver backend/prisma/schema.prisma actual).
-Tarea: definir en schema.prisma las entidades Usuario, Rol, Cliente, TipoReserva, Reserva, CategoriaProducto, Producto, MovimientoStock, CategoriaGasto, Gasto, Ingreso, según el modelo de datos documentado (adjunto o referenciado). Generar la migración inicial y un script de seed con datos de prueba de una bodega argentina.
-Revisá el archivo backend/prisma/schema.prisma actual antes de modificarlo. No toques configuración de autenticación ni de otros módulos.
-Al finalizar: corré npx prisma migrate dev y npx prisma db seed, confirmá que no hay errores.
-Entregá un resumen de las entidades creadas y cualquier ambigüedad que hayas resuelto por tu cuenta.
-```
-
-*(Los prompts siguientes replican esta estructura —contexto, tarea puntual, archivos a revisar, restricción de no tocar otras áreas, pedido de validación y resumen— para cada tarea del backlog completo.)*
-
----
-
-## 21. Riesgos y decisiones pendientes
-
-**Riesgos técnicos**
-- Cálculo de stock actual a partir de movimientos puede volverse lento con mucho volumen histórico; mitigar con un campo desnormalizado actualizado por transacción.
-- Manejo de zona horaria en fechas de reservas si en el futuro se opera en más de una locación.
-
-**Riesgos funcionales**
-- La validación de capacidad "blanda" (advertencia, no bloqueo) podría generar sobreventa de cupos si los empleados ignoran la advertencia sistemáticamente; revisar con el dueño si conviene endurecerla.
-- El concepto simplificado de "ingreso" separado de "venta" puede confundir a empleados sin formación contable; requiere breve capacitación.
-
-**Funciones que podrían ampliar demasiado el alcance**
-- Gestión de mesas físicas del restaurante.
-- Permisos granulares por empleado.
-- Adjuntar comprobantes a gastos.
-
-**Decisiones a confirmar con el dueño**
-- Capacidad real de personas por turno de restaurante y degustación.
-- Si los empleados deben ver montos de ingresos/gastos o solo cargarlos.
-- Si se requiere multi-sucursal en el futuro cercano (afecta el modelo de datos).
-
-**Elementos que conviene posponer**
-- Todo lo listado en "Fuera del alcance inicial" del pedido original.
-
----
-
-## 22. Criterios generales de finalización
-
-**Funcional**: el dueño puede loguearse, ver el dashboard con datos reales, crear y gestionar reservas de ambos tipos con todos sus estados, registrar clientes, productos, movimientos de stock, gastos e ingresos, y crear usuarios empleados. Los empleados pueden operar todo lo anterior salvo usuarios y configuración.
-
-**Técnico**: backend y frontend compilan sin errores, migraciones aplican limpiamente sobre una base vacía, existe seed de datos de demostración, todas las rutas sensibles están protegidas por autenticación y rol, no hay stock negativo posible, y los mensajes de error/éxito son consistentes en toda la aplicación.
-
----
-
-## Primer prompt recomendado para Codex
-
-```
-Quiero que inicies desde cero un proyecto de CRM web para la administración de una bodega, siguiendo esta planificación como única fuente de verdad (no la reinterpretes ni agregues funcionalidades no mencionadas).
-
-Stack:
-- Backend: NestJS + TypeScript + Prisma + PostgreSQL (o SQLite para desarrollo local).
-- Frontend: React + Vite + Javascript + React Router + Tailwind CSS.
-
-Primer paso: crear la estructura base de dos carpetas, backend/ y frontend/, en la raíz del proyecto, siguiendo exactamente la estructura de carpetas detallada en la sección 15 de la planificación.
-
-Backend:
-- Inicializar proyecto NestJS con TypeScript.
-- Configurar Prisma apuntando a PostgreSQL (variable DATABASE_URL en .env, con .env.example de referencia).
-- Crear un endpoint GET /health que devuelva { status: "ok" }.
-- No implementes todavía ningún módulo de negocio (auth, reservas, etc.), solo la base del proyecto.
 
 Frontend:
-- Inicializar proyecto Vite + React + JavaScript.
-- Configurar Tailwind CSS.
-- Crear una pantalla base vacía en / que muestre el nombre del proyecto, sin lógica de negocio todavía.
 
-Al finalizar:
-- Verificá que el backend compila y levanta con npm run start:dev, y que GET /health responde 200.
-- Verificá que el frontend compila y levanta con npm run dev.
-- No implementes autenticación, base de datos con entidades de negocio, ni ninguna pantalla funcional todavía; eso se hará en tareas posteriores.
-- Entregá un resumen de la estructura creada y cualquier decisión o supuesto que hayas tomado respecto a versiones de dependencias u organización de archivos.
+```text
+02-frontend/
+  src/
+    components/
+    context/
+    hooks/
+    layouts/
+    pages/
+    routes/
+    services/
+    styles/
+    App.jsx
+    main.jsx
+```
+
+---
+
+## 24. Seguridad minima
+
+- Login con email y contrasena.
+- Contrasenas hasheadas con bcrypt.
+- Tokens JWT con expiracion.
+- Rutas protegidas en frontend y backend.
+- Autorizacion por rol en endpoints sensibles.
+- Validacion de entradas con DTOs y `class-validator`.
+- CORS restringido al origen del frontend.
+- Variables sensibles solo en `.env`, nunca en el repositorio.
+- Auditoria funcional de usuario, fecha y origen en operaciones relevantes.
+
+---
+
+## 25. Datos de prueba sugeridos
+
+- **Usuarios:** Maria Fernandez como administradora; Lucas Gomez como empleado.
+- **Clientes:** Sofia Martinez, Carlos Rodriguez, John Smith, Ana Belen Torres.
+- **Categorias:** Vinos, Insumos secos, Packaging, Gastronomia, Servicios, Marketing.
+- **Productos:** Malbec Reserva 2021, Cabernet Franc 2022, Espumante Extra Brut, botellas, corchos, cajas, etiquetas, tabla de quesos regionales.
+- **Proveedores:** proveedor de botellas, proveedor de insumos gastronomicos, servicio de mantenimiento.
+- **Reservas:** degustacion para 4 personas manana 11:00; almuerzo para 2 personas hoy 13:00.
+- **Compras:** compra de botellas con control de stock; servicio de mantenimiento sin impacto de stock.
+- **Ventas:** venta de botellas y productos de degustacion.
+- **Movimientos de stock:** ajuste inicial, entrada por compra, salida por venta, correccion.
+- **Gastos:** servicios, limpieza, marketing.
+
+---
+
+## 26. Plan de implementacion y backlog
+
+El orden funcional aprobado es:
+
+0. Bootstrap.
+1. Autenticacion.
+2. Dashboard.
+3. Clientes.
+4. Categorias.
+5. Productos.
+6. Reservas.
+7. Compras y Proveedores.
+8. Stock.
+9. Ventas.
+10. Gastos.
+11. Reportes.
+12. Usuarios.
+13. Configuracion.
+14. Produccion y despliegue.
+
+Segun `docs/development/progreso.md`, las etapas 0, 1 y 2 figuran finalizadas. No deben marcarse como pendientes en este documento.
+
+### Etapas finalizadas
+
+- **Etapa 0 - Bootstrap:** proyecto inicial, backend, frontend, Tailwind, Prisma, Supabase y estructura base.
+- **Etapa 1 - Autenticacion:** login, JWT, roles, guards, pantalla de login, contexto de autenticacion, rutas protegidas y logout.
+- **Etapa 2 - Dashboard:** layout principal, sidebar, header, dashboard inicial, navegacion, componentes reutilizables y responsive.
+
+### Proximas etapas del backlog
+
+- **Etapa 3 - Clientes:** modelo, backend, frontend, CRUD, validaciones, pruebas y documentacion.
+- **Etapa 4 - Categorias:** modelo, backend, frontend, CRUD, validaciones, pruebas y documentacion.
+- **Etapa 5 - Productos:** modelo, backend, frontend, CRUD, busquedas, validaciones, pruebas y documentacion.
+- **Etapa 6 - Reservas:** modelo, backend, frontend, calendario o vistas por fecha, estados, confirmaciones, pruebas y documentacion.
+- **Etapa 7 - Compras y Proveedores:** proveedores, compras, detalle de compra, flujo de compra e integracion condicionada con stock.
+- **Etapa 8 - Stock:** movimientos, calculo automatico, correcciones mediante movimientos, alertas de stock bajo, historial y pruebas.
+- **Etapa 9 - Ventas:** modelo, backend, frontend, flujo de venta, detalle de venta, integracion con stock y validaciones.
+- **Etapa 10 - Gastos:** modelo, backend, frontend, CRUD, categorias, pruebas y documentacion.
+- **Etapa 11 - Reportes:** indicadores, reportes, filtros y visualizaciones. La exportacion queda como mejora futura.
+- **Etapa 12 - Usuarios:** gestion de usuarios, roles y permisos.
+- **Etapa 13 - Configuracion:** datos de la bodega, configuraciones generales y parametros del sistema.
+- **Etapa 14 - Produccion y despliegue:** variables de entorno, seguridad, optimizacion, deploy backend, deploy frontend, pruebas finales, documentacion final y release.
+
+---
+
+## 27. Riesgos y decisiones aprobadas
+
+### Riesgos tecnicos
+
+- El calculo de stock por movimientos puede requerir optimizaciones si crece mucho el volumen historico.
+- La falta de auditoria podria dificultar la trazabilidad de operaciones.
+- Permisos mal configurados pueden exponer informacion o acciones no autorizadas.
+- Dependencias innecesarias pueden aumentar complejidad y mantenimiento.
+
+### Riesgos funcionales
+
+- Inconsistencia entre compras y movimientos si no se respeta `controlaStock`.
+- Ventas sin disponibilidad si la validacion de stock falla o se omite.
+- Correcciones de stock incorrectas si no se registran como movimientos trazables.
+- Duplicacion entre compras y gastos si el criterio operativo no se comunica claramente.
+- Crecimiento no controlado del alcance con funciones ajenas al MVP.
+- Confundir produccion enologica con despliegue a produccion de la aplicacion.
+
+### Decisiones aprobadas
+
+- Existe una unica entidad Producto.
+- El stock se calcula por movimientos.
+- Los movimientos de stock son inmutables.
+- Venta reemplaza Ingreso como modulo comercial.
+- Compra no siempre afecta stock.
+- Las compras generan movimientos solo cuando corresponde.
+- El Dashboard se adapta segun rol.
+- El menu se organiza por areas funcionales.
+- Los formularios deben ser inteligentes, con busqueda y autocompletado.
+- La produccion enologica queda fuera de alcance.
+
+### Decisiones operativas a confirmar en implementacion
+
+- Capacidad real por turno de restaurante y degustacion.
+- Si la advertencia de capacidad debe poder forzarse y que roles pueden hacerlo.
+- Que empleados pueden ver importes de ventas, compras y gastos.
+- Si multiples sucursales seran necesarias en una version futura.
+
+---
+
+## 28. Fuera de alcance actual
+
+Queda claramente fuera del alcance actual:
+
+- produccion enologica;
+- lotes de produccion;
+- fermentacion;
+- barricas;
+- cosecha;
+- trazabilidad de elaboracion;
+- facturacion electronica;
+- integracion con medios de pago;
+- integraciones externas no aprobadas;
+- multiples sucursales, hasta que se defina;
+- notificaciones automaticas;
+- app movil nativa;
+- inteligencia artificial;
+- funcionalidades no indicadas en el MVP.
+
+La produccion enologica no debe confundirse con la etapa de produccion y despliegue de la aplicacion.
+
+---
+
+## 29. Criterios generales de aceptacion
+
+### Funcionales
+
+- El administrador puede iniciar sesion, ver el Dashboard, gestionar clientes, categorias, productos, reservas, proveedores, compras, stock, ventas, gastos, reportes, usuarios y configuracion.
+- Los empleados acceden solo a los modulos permitidos por su rol.
+- El Dashboard muestra informacion operativa segun rol.
+- El menu muestra solo opciones autorizadas.
+- Las reservas permiten cliente existente o nuevo, fecha, hora, cantidad de personas, observaciones y estados.
+- Las ventas registran productos, cantidades, precios, subtotales y total.
+- Las ventas generan salidas automaticas para productos que controlan stock.
+- Las ventas se bloquean si no hay stock suficiente.
+- Las compras registran proveedor cuando corresponda, items, cantidades, precios, subtotales y total.
+- Las compras generan entradas de stock solo para productos con `controlaStock` activo.
+- Los gastos se gestionan separados de compras.
+- Los reportes muestran informacion de ventas, compras, gastos y stock por periodo.
+- Los formularios reutilizan datos existentes y calculan importes derivados.
+
+### Tecnicos
+
+- Backend y frontend compilan sin errores al finalizar cada etapa implementada.
+- Las rutas sensibles estan protegidas por autenticacion y rol.
+- Las validaciones criticas existen en backend.
+- Prisma es la unica capa de acceso a PostgreSQL.
+- Supabase se usa solo como proveedor de base de datos.
+- Las migraciones se ejecutan solo en tareas de implementacion que lo requieran.
+
+### Auditoria y stock
+
+- El stock se calcula mediante movimientos.
+- Los movimientos de stock son inmutables.
+- Las correcciones se registran con nuevos movimientos.
+- No se permite stock negativo.
+- Las operaciones relevantes registran usuario, fecha y origen.
+- No se eliminan registros con relaciones historicas relevantes.
+
+---
+
+## 30. Primer prompt recomendado para Codex
+
+```text
+Quiero continuar el desarrollo del CRM Bodega siguiendo docs/planificacion-crm-bodega.md como fuente de verdad funcional.
+
+Antes de implementar:
+- leer docs/planificacion-crm-bodega.md;
+- leer docs/development/progreso.md;
+- respetar el roadmap aprobado;
+- no agregar funcionalidades fuera del MVP;
+- no modificar arquitectura sin confirmacion.
+
+Implementar solamente la etapa o tarea solicitada, validar backend/frontend segun corresponda y reportar cambios realizados.
 ```
