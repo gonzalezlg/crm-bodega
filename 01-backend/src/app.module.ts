@@ -4,9 +4,10 @@ import { AppController } from './app.controller';
 import { AuthModule } from './auth/auth.module';
 import { AuthGuard } from './auth/guards/auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
+import { ClientesModule } from './clientes/clientes.module';
 
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, ClientesModule],
   controllers: [AppController],
   providers: [
     {

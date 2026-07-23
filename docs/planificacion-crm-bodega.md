@@ -507,7 +507,7 @@ Los atajos globales, como `Ctrl+N`, `Ctrl+S`, `Ctrl+F` o una busqueda global, qu
 
 **HU-CLI-01** Como empleado, quiero registrar un cliente nuevo para asociarlo a reservas o ventas.
 
-- Criterios: valida datos obligatorios; advierte posibles duplicados por email o telefono.
+- Criterios: nombre, apellido, telefono y email son obligatorios; valida formato de email; advierte posibles duplicados por email o telefono.
 
 **HU-CLI-02** Como empleado, quiero buscar clientes existentes para reutilizar sus datos.
 
@@ -796,7 +796,7 @@ El modelo conceptual minimo incluye:
 
 - **Rol:** id, nombre, descripcion, permisos conceptuales.
 - **Usuario:** id, nombre, email unico, password hash, rol, activo, fechas de auditoria.
-- **Cliente:** id, nombre, apellido, telefono, email, ubicacion, observaciones, activo, fechas de auditoria.
+- **Cliente:** id, nombre obligatorio, apellido obligatorio, telefono obligatorio, email obligatorio, ubicacion opcional, observaciones opcionales, activo, fechas de auditoria.
 - **Categoria:** id, nombre, tipo o ambito cuando corresponda, activo.
 - **Producto:** id, nombre, categoria, `tipoProducto`, `seVende`, `seCompra`, `controlaStock`, precio de venta, costo estimado, stock minimo, activo.
 - **Reserva:** id, cliente, fecha, hora, cantidad de personas, estado, observaciones, usuario creador, fechas de auditoria.
@@ -955,6 +955,7 @@ La definicion detallada de DTOs y contratos se realizara en las etapas de implem
 - Validar stock suficiente.
 - Validar que una compra genere movimientos solo cuando corresponda.
 - Usar DTOs y `class-validator`.
+- Validar que nombre, apellido, telefono y email sean obligatorios para Cliente.
 
 ### Base de datos
 
