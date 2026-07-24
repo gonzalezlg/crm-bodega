@@ -13,7 +13,7 @@ function getRoleLabel(role) {
   return role.nombre || role.name || 'Sin rol';
 }
 
-function Header({ pageTitle, onMenuClick }) {
+function Header({ onMenuClick }) {
   const { user } = useAuth();
   const userName = user?.nombre || user?.name || user?.email || 'Usuario';
   const roleLabel = getRoleLabel(user?.rol);
@@ -30,7 +30,7 @@ function Header({ pageTitle, onMenuClick }) {
           <Menu className="h-5 w-5" aria-hidden="true" />
         </button>
 
-        <h1 className="text-lg font-semibold text-zinc-950">{pageTitle}</h1>
+        <span className="text-lg font-semibold text-zinc-950">CRM Bodega</span>
       </div>
 
       <div className="min-w-0 text-right">
