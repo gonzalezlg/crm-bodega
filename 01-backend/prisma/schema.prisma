@@ -47,12 +47,28 @@ model Cliente {
 }
 
 model Categoria {
-  id            String   @id @default(uuid()) @db.Uuid
-  nombre        String   @unique
+  id            String     @id @default(uuid()) @db.Uuid
+  nombre        String     @unique
   descripcion   String?
-  activo        Boolean  @default(true)
-  creadoEn      DateTime @default(now()) @map("creado_en")
-  actualizadoEn DateTime @updatedAt @map("actualizado_en")
+  activo        Boolean    @default(true)
+  productos     Producto[]
+  creadoEn      DateTime   @default(now()) @map("creado_en")
+  actualizadoEn DateTime   @updatedAt @map("actualizado_en")
 
   @@map("categorias")
+}
+
+model Producto {
+  id            String    @id @default(uuid()) @db.Uuid
+  nombre        String
+  descripcion   String?
+  categoriaId   String    @map("categoria_id") @db.Uuid
+  categoria     Categoria @relation(fields: [categoriaId], references: [id])
+  activo        Boolean   @default(true)
+  creadoEn      DateTime  @default(now()) @map("creado_en")
+  actualizadoEn DateTime  @updatedAt @map("actualizado_en")
+
+  @@unique([nombre, categoriaId])
+  @@index([categoriaId])
+  @@map("productos")
 }
