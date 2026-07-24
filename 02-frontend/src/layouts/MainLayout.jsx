@@ -2,10 +2,10 @@ import { useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Header from '../components/layout/Header';
 import Sidebar from '../components/layout/Sidebar';
-import { navigationItems } from '../config/navigation';
+import { getNavigationItems } from '../config/navigation';
 
 function getPageTitle(pathname) {
-  const activeItem = navigationItems.find(
+  const activeItem = getNavigationItems().find(
     (item) => item.enabled && item.path === pathname,
   );
 
@@ -28,7 +28,7 @@ function MainLayout() {
       {isSidebarOpen && (
         <button
           type="button"
-          aria-label="Cerrar menu"
+          aria-label="Cerrar menú"
           onClick={closeSidebar}
           className="fixed inset-0 z-30 bg-zinc-950/30 md:hidden"
         />
