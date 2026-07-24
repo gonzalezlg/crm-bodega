@@ -197,14 +197,14 @@ Una etapa solo puede considerarse finalizada cuando:
 
 ## Etapa 4 - Categorías
 
-- [ ] Modelo
-- [ ] Backend
-- [ ] Frontend
-- [ ] CRUD
-- [ ] Validaciones
-- [ ] Pruebas
-- [ ] Documentar etapa
-- [ ] Commit
+- [x] Modelo
+- [x] Backend
+- [x] Frontend
+- [x] CRUD
+- [x] Validaciones
+- [x] Pruebas
+- [x] Documentar etapa
+- [x] Commit
 
 ---
 

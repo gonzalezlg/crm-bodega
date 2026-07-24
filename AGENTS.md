@@ -30,7 +30,7 @@ En caso de contradicción entre el código y la documentación:
 ### Frontend
 - React.
 - Vite.
-- TypeScript.
+- Javascript.
 - React Router.
 - Tailwind CSS. (los estilos podemos tomarlos desde la imagen que se encuentra en la carpeta img-diseño/image.png)
 

@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import ProtectedRoute from '../components/auth/ProtectedRoute';
 import MainLayout from '../layouts/MainLayout';
+import CategoriasPage from '../pages/CategoriasPage';
 import ClientesPage from '../pages/ClientesPage';
 import DashboardPage from '../pages/DashboardPage';
 import LoginPage from '../pages/LoginPage';
@@ -14,6 +15,7 @@ function AppRoutes() {
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/clientes" element={<ClientesPage />} />
+          <Route path="/categorias" element={<CategoriasPage />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
