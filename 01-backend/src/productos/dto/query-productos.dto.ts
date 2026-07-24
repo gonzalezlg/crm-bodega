@@ -1,10 +1,40 @@
-import { Transform } from 'class-transformer';
-import { IsBoolean, IsOptional, IsString, IsUUID } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import {
+  IsBoolean,
+  IsInt,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Max,
+  Min,
+} from 'class-validator';
 
-export class QueryProductosDto {
+export class GetProductosQueryDto {
   @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page = 1;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit = 10;
+
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (typeof value !== 'string') {
+      return value;
+    }
+
+    const search = value.trim();
+
+    return search || undefined;
+  })
   @IsString()
-  busqueda?: string;
+  search?: string;
 
   @IsOptional()
   @IsUUID()

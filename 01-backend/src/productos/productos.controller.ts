@@ -10,7 +10,7 @@ import {
   ValidationPipe,
 } from '@nestjs/common';
 import { CreateProductoDto } from './dto/create-producto.dto';
-import { QueryProductosDto } from './dto/query-productos.dto';
+import { GetProductosQueryDto } from './dto/query-productos.dto';
 import { UpdateProductoEstadoDto } from './dto/update-producto-estado.dto';
 import { UpdateProductoDto } from './dto/update-producto.dto';
 import { ProductosService } from './productos.service';
@@ -27,7 +27,7 @@ export class ProductosController {
   constructor(private readonly productosService: ProductosService) {}
 
   @Get()
-  findAll(@Query() query: QueryProductosDto) {
+  findAll(@Query() query: GetProductosQueryDto) {
     return this.productosService.findAll(query);
   }
 

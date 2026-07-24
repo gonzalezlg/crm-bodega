@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { Categoria, Prisma, PrismaClient } from '@prisma/client';
 import { CreateProductoDto } from './dto/create-producto.dto';
-import { QueryProductosDto } from './dto/query-productos.dto';
+import { GetProductosQueryDto } from './dto/query-productos.dto';
 import { UpdateProductoEstadoDto } from './dto/update-producto-estado.dto';
 import { UpdateProductoDto } from './dto/update-producto.dto';
 
@@ -19,38 +19,54 @@ export class ProductosService implements OnModuleDestroy {
     await this.prisma.$disconnect();
   }
 
-  async findAll(query: QueryProductosDto) {
-    const where: Prisma.ProductoWhereInput = {
-       categoriaId: query.categoriaId,
-    };
+  async findAll(query: GetProductosQueryDto) {
+    const { page, limit } = query;
+    const skip = (page - 1) * limit;
+    const where: Prisma.ProductoWhereInput = {};
+
+    if (query.categoriaId !== undefined) {
+      where.categoriaId = query.categoriaId;
+    }
 
     if (query.activo !== undefined) {
-        where.activo = query.activo;
+      where.activo = query.activo;
     }
 
-    const busqueda = query.busqueda?.trim();
+    if (query.search) {
+      where.nombre = {
+        contains: query.search,
+        mode: 'insensitive',
+      };
+    }
 
-    if (busqueda) {
-      where.OR = [
-        { nombre: { contains: busqueda, mode: 'insensitive' } },
-        { descripcion: { contains: busqueda, mode: 'insensitive' } },
-        {
-          categoria: {
-            nombre: { contains: busqueda, mode: 'insensitive' },
-          },
+    const [productos, total] = await this.prisma.$transaction([
+      this.prisma.producto.findMany({
+        where,
+        include: {
+          categoria: true,
         },
-      ];
-    }
+        orderBy: {
+          nombre: 'asc',
+        },
+        skip,
+        take: limit,
+      }),
+      this.prisma.producto.count({ where }),
+    ]);
 
-    return this.prisma.producto.findMany({
-      where,
-      include: {
-        categoria: true,
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      data: productos,
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasPrevious: page > 1,
+        hasNext: page < totalPages,
       },
-      orderBy: {
-        nombre: 'asc',
-      },
-    });
+    };
   }
 
   async findOne(id: string) {
