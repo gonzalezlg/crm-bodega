@@ -71,7 +71,7 @@ const navigationGroups = [
         label: 'Productos',
         path: '/productos',
         icon: Package,
-        enabled: false,
+        enabled: true,
       },
       {
         label: 'Stock',

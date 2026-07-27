@@ -5,6 +5,7 @@ import CategoriasPage from '../pages/CategoriasPage';
 import ClientesPage from '../pages/ClientesPage';
 import DashboardPage from '../pages/DashboardPage';
 import LoginPage from '../pages/LoginPage';
+import ProductosPage from '../pages/ProductosPage';
 
 function AppRoutes() {
   return (
@@ -16,6 +17,7 @@ function AppRoutes() {
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/clientes" element={<ClientesPage />} />
           <Route path="/categorias" element={<CategoriasPage />} />
+          <Route path="/productos" element={<ProductosPage />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
