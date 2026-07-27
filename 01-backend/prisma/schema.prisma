@@ -7,6 +7,16 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Weekday {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
 model Rol {
   id          Int       @id @default(autoincrement())
   nombre      String    @unique
@@ -71,4 +81,34 @@ model Producto {
   @@unique([nombre, categoriaId])
   @@index([categoriaId])
   @@map("productos")
+}
+
+model Experience {
+  id              String     @id @default(uuid()) @db.Uuid
+  name            String
+  description     String?
+  durationMinutes Int        @map("duration_minutes")
+  active          Boolean    @default(true)
+  timeSlots       TimeSlot[]
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
+
+  @@map("experiences")
+}
+
+model TimeSlot {
+  id           String     @id @default(uuid()) @db.Uuid
+  experienceId String     @map("experience_id") @db.Uuid
+  experience   Experience @relation(fields: [experienceId], references: [id], onDelete: Restrict)
+  weekday      Weekday
+  startTime    String     @map("start_time")
+  maxPeople    Int        @map("max_people")
+  active       Boolean    @default(true)
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  @@unique([experienceId, weekday, startTime])
+  @@index([experienceId])
+  @@index([weekday])
+  @@map("time_slots")
 }
