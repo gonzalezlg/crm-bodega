@@ -1,188 +1,332 @@
-# Etapa 4 - Módulo de Categorías
-commit -m "feat(categorias): implement category management module"
+# Etapa 5 - Módulo de Productos
+
+commit -m "feat(productos): implement product management module"
 
 ## Objetivo
 
-Implementar el módulo de Categorías, permitiendo administrar la clasificación de los productos del CRM, y refactorizar la navegación de la aplicación para soportar una estructura agrupada y escalable.
+Implementar el módulo de Productos del CRM, permitiendo administrar los productos comercializados por la bodega mediante un CRUD completo, integrando categorías, validaciones, búsqueda, paginación y activación lógica.
+
+Este módulo constituye la base para futuras funcionalidades como Reservas, Compras, Stock y Ventas.
 
 ---
 
-## Funcionalidades implementadas
+# Funcionalidades implementadas
 
-### Gestión de Categorías
+## Gestión de Productos
 
-Se implementó el módulo completo de Categorías.
+Se implementó el módulo completo de Productos.
 
 Las funcionalidades incorporadas incluyen:
 
-- Alta de categorías.
-- Edición de categorías existentes.
-- Consulta de categorías.
-- Cambio de estado Activa/Inactiva.
+- Alta de productos.
+- Edición de productos.
+- Consulta de detalle.
+- Listado paginado.
 - Búsqueda por nombre.
+- Filtrado por categoría.
 - Filtrado por estado.
+- Activación y desactivación lógica.
 
-Al igual que en el módulo de Clientes, no se implementó eliminación física de registros, manteniendo la política de desactivación lógica definida para el proyecto.
+Al igual que en el resto de los módulos administrativos, no se implementó eliminación física de registros.
+
+Los productos permanecen almacenados y únicamente pueden cambiar su estado Activo/Inactivo.
 
 ---
 
-### Pantalla de Categorías
+## Pantalla de Productos
 
-Se desarrolló una pantalla específica para la administración de categorías.
+Se desarrolló una pantalla específica para la administración de productos.
 
 La interfaz incluye:
 
-- Listado de categorías.
+- Listado paginado.
 - Buscador.
+- Filtro por categoría.
 - Filtro por estado.
-- Formulario de alta y edición.
-- Confirmación para cambio de estado.
-- Mensajes de éxito y error.
+- Navegación entre páginas.
+- Alta de productos.
+- Edición de productos.
+- Vista de detalle.
+- Activación y desactivación.
+- Mensajes de error.
+- Estados de carga.
 
-Se reutilizó el patrón visual implementado previamente para mantener una experiencia consistente en toda la aplicación.
+Se reutilizó la arquitectura visual utilizada previamente en Clientes y Categorías para mantener consistencia en toda la aplicación.
 
 ---
 
-### Comunicación con el Backend
+## Vista de Detalle
+
+Cada producto posee una pantalla propia de consulta.
+
+Desde ella es posible visualizar:
+
+- Nombre.
+- Categoría.
+- Estado.
+- Descripción.
+
+Además permite:
+
+- Editar el producto.
+- Activarlo.
+- Desactivarlo.
+
+La actualización del estado se realiza sin recargar la página, utilizando la respuesta del backend para mantener sincronizada la interfaz.
+
+---
+
+## Comunicación con el Backend
 
 Se implementó un servicio específico para consumir la API REST del módulo.
 
 Se incorporaron las operaciones:
 
-- Obtener categorías.
-- Obtener categoría por ID.
-- Crear categoría.
-- Actualizar categoría.
+- Obtener productos.
+- Obtener producto por ID.
+- Crear producto.
+- Actualizar producto.
 - Cambiar estado.
 
-La autenticación continúa realizándose mediante JWT almacenado en la sesión del usuario.
+Toda la comunicación continúa utilizando autenticación JWT almacenada en la sesión del usuario.
 
 ---
 
-### Validaciones
+## Validaciones
 
 Se implementaron validaciones tanto en frontend como en backend.
 
 Entre ellas:
 
 - Nombre obligatorio.
-- Longitud mínima y máxima del nombre.
-- Longitud máxima de la descripción.
-- Prevención de categorías duplicadas.
-- Normalización de espacios mediante `trim()`.
+- Categoría obligatoria.
+- Validaciones mediante DTOs.
+- ValidationPipe.
+- Normalización de textos mediante trim().
+- Manejo de respuestas múltiples del backend.
+- Validación defensiva de respuestas inválidas.
 
-Las respuestas del backend pueden contener múltiples mensajes de error, los cuales son mostrados correctamente en la interfaz.
+En la edición se contempló además el caso de productos asociados a categorías actualmente inactivas.
+
+En dicho escenario:
+
+- La categoría continúa visualizándose.
+- Se identifica como "(inactiva)".
+- No puede mantenerse al guardar.
+- El usuario debe seleccionar una categoría activa antes de confirmar los cambios.
 
 ---
 
-### Experiencia de Usuario
+## Experiencia de Usuario
 
-Se incorporaron mejoras de usabilidad:
+Se incorporaron diversas mejoras de usabilidad:
 
 - Búsqueda con debounce.
-- Limpieza automática de mensajes.
-- Scroll automático hacia mensajes de éxito.
-- Confirmación antes de activar o desactivar una categoría.
-- Estados de carga durante consultas y guardado.
+- Paginación reutilizable.
+- Estados de carga.
+- Confirmación antes de desactivar productos.
+- Actualización del estado sin recargar la página.
+- Manejo centralizado de errores.
+- Componentes reutilizables para formularios y acciones.
 
 ---
 
-## Componentes creados
+# Componentes creados
 
-- CategoriasPage
-- CategoriaForm
-- CategoriasTable
-- categoriasService
+## Páginas
+
+- ProductosPage
+- ProductoDetallePage
+- ProductoNuevoPage
+- ProductoEditarPage
+
+## Componentes
+
+- ProductoCard
+- ProductoForm
+
+## Layout reutilizable
+
+- PageContainer
+- PageHeader
+- PageToolbar
+- PagePagination
+
+## Componentes UI reutilizables
+
+- Button
+- Badge
+- Loading
+- EmptyState
+- FormActions
+
+## Servicios
+
+- productosService
 
 ---
 
-## Backend
+# Backend
 
-Se implementó el módulo completo de Categorías utilizando NestJS.
+Se implementó el módulo completo utilizando NestJS.
 
 Se incorporaron:
 
-- Modelo `Categoria` en Prisma.
-- Migración de base de datos.
+- Modelo Producto.
+- DTOs.
 - Controller.
 - Service.
-- DTOs.
 - Validaciones.
 - Integración con Prisma.
 
-Se agregaron los endpoints necesarios para la administración del módulo.
+Se agregaron los endpoints necesarios para administrar el módulo.
+
+Entre ellos:
+
+- GET /productos
+- GET /productos/:id
+- POST /productos
+- PATCH /productos/:id
+- PATCH /productos/:id/estado
 
 ---
 
-## Refactorización de la navegación
+# Decisiones de arquitectura
 
-Se realizó una refactorización de la arquitectura de navegación para preparar el crecimiento del CRM.
+Durante esta etapa se definieron las siguientes decisiones funcionales.
 
-La navegación dejó de utilizar una estructura plana y pasó a organizarse mediante grupos funcionales.
+## Producto
 
-La estructura actual contempla:
+Existe una única entidad Producto.
 
-- Dashboard
-- Operación
-- Inventario
-- Gestión
-- Análisis
-- Administración
+No existen entidades separadas para productos terminados e insumos.
 
-Los módulos aún no desarrollados permanecen visibles pero deshabilitados, permitiendo anticipar la estructura futura del sistema sin exponer funcionalidades inexistentes.
+Las futuras funcionalidades utilizarán esta misma entidad.
 
 ---
 
-### API de navegación
+## Categorías
 
-Se centralizó el acceso a la navegación mediante funciones helper.
+Todo producto debe pertenecer obligatoriamente a una categoría.
 
-Se incorporaron:
+Las categorías inactivas continúan siendo válidas para productos existentes.
 
-- `getNavigationGroups()`
-- `getNavigationItems()`
+Sin embargo:
 
-`navigationGroups` pasó a ser la única fuente de verdad de la navegación.
+- No pueden seleccionarse para nuevos productos.
+- No pueden mantenerse durante la edición.
 
-De esta forma, los componentes del frontend dejaron de depender de la estructura interna del menú, facilitando futuras incorporaciones como permisos, roles o navegación dinámica.
-
----
-
-## Decisiones de arquitectura
-
-- Se reutilizó la arquitectura implementada en el módulo de Clientes.
-- Se mantuvo la separación entre páginas, componentes y servicios.
-- Se evitó duplicar lógica de consumo de API.
-- Se implementó desactivación lógica en lugar de eliminación física.
-- Se mantuvo una única fuente de verdad para la navegación.
-- Se desacopló el acceso al menú mediante funciones helper.
-- Se preparó la arquitectura para el crecimiento del CRM sin modificar las rutas existentes.
-- Se respetó la arquitectura general del proyecto sin incorporar funcionalidades fuera del alcance de la etapa.
+Esto garantiza la integridad de los datos sin perder historial.
 
 ---
 
-## Pruebas realizadas
+## Eliminación
+
+Los productos no se eliminan físicamente.
+
+La baja lógica mediante activación/desactivación constituye el único mecanismo permitido.
+
+---
+
+## SKU
+
+Durante esta etapa se definió la arquitectura del SKU.
+
+El SKU:
+
+- Será autogenerado.
+- Utilizará una secuencia de PostgreSQL.
+- Tendrá formato:
+
+PRD-000001
+
+Podrá editarse manualmente antes de guardar.
+
+No se implementó aún porque no resulta necesario para el MVP actual.
+
+---
+
+## Variantes
+
+No se implementó soporte para variantes.
+
+Una cosecha diferente representa un producto diferente.
+
+No existen variantes de un mismo producto.
+
+---
+
+## Presentaciones
+
+No se implementó soporte para presentaciones físicas.
+
+Esta funcionalidad será desarrollada junto con el módulo de Stock.
+
+---
+
+## Packs comerciales
+
+No se implementó soporte para packs.
+
+Será incorporado en una etapa posterior.
+
+---
+
+## Ficha técnica
+
+No se implementó la ficha técnica del producto.
+
+Será agregada posteriormente como información complementaria.
+
+---
+
+## Precios
+
+Los precios no forman parte del módulo Producto.
+
+Serán administrados junto con los procesos comerciales correspondientes.
+
+---
+
+# Integración con otros módulos
+
+Este módulo será utilizado posteriormente por:
+
+- Reservas
+- Compras
+- Stock
+- Ventas
+- Reportes
+
+Durante esta etapa únicamente se integró con el módulo de Categorías.
+
+---
+
+# Pruebas realizadas
 
 Se verificó correctamente:
 
-- Alta de categorías.
+- Alta.
 - Edición.
 - Consulta.
+- Listado.
+- Paginación.
 - Búsqueda.
-- Filtrado.
+- Filtro por categoría.
+- Filtro por estado.
 - Cambio de estado.
 - Manejo de errores.
-- Consumo de API.
-- Funcionamiento de la navegación agrupada.
-- Navegación responsive.
-- Menú móvil.
+- Validaciones.
+- Integración con Categorías.
 - Compilación del backend.
-- Compilación del frontend mediante `npm run build`.
+- Compilación del frontend mediante npm run build.
 
 Todas las pruebas fueron satisfactorias.
 
 ---
 
-## Resultado
+# Resultado
 
-El CRM incorpora un segundo módulo de negocio completamente funcional y una arquitectura de navegación preparada para el crecimiento del sistema. A partir de esta etapa, la incorporación de nuevos módulos podrá realizarse manteniendo una organización consistente del menú y reutilizando el patrón funcional definido para los módulos administrativos.
+El CRM incorpora un módulo completo de administración de Productos, reutilizando la arquitectura definida para los módulos administrativos e integrándose con Categorías.
+
+El módulo queda preparado para ser utilizado por Reservas, Compras, Stock y Ventas, manteniendo una base sólida para la evolución del sistema sin incorporar funcionalidades fuera del alcance del MVP.
