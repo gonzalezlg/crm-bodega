@@ -94,6 +94,12 @@ function ProductoDetallePage() {
             <Badge variant={producto.activo ? 'success' : 'neutral'}>
               {estado}
             </Badge>
+            <Link
+              to={`/productos/${producto.id}/editar`}
+              className="inline-flex min-h-10 items-center justify-center rounded-md bg-zinc-950 px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-300 focus:ring-offset-2"
+            >
+              Editar
+            </Link>
             <VolverLink />
           </>
         }

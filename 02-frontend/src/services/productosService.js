@@ -94,3 +94,10 @@ export function crearProducto(data) {
     body: JSON.stringify(data),
   });
 }
+
+export function actualizarProducto(id, data) {
+  return request(`/api/productos/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}

@@ -6,6 +6,7 @@ import ClientesPage from '../pages/ClientesPage';
 import DashboardPage from '../pages/DashboardPage';
 import LoginPage from '../pages/LoginPage';
 import ProductoDetallePage from '../pages/ProductoDetallePage';
+import ProductoEditarPage from '../pages/ProductoEditarPage';
 import ProductoNuevoPage from '../pages/ProductoNuevoPage';
 import ProductosPage from '../pages/ProductosPage';
 
@@ -21,6 +22,7 @@ function AppRoutes() {
           <Route path="/categorias" element={<CategoriasPage />} />
           <Route path="/productos" element={<ProductosPage />} />
           <Route path="/productos/nuevo" element={<ProductoNuevoPage />} />
+          <Route path="/productos/:id/editar" element={<ProductoEditarPage />} />
           <Route path="/productos/:id" element={<ProductoDetallePage />} />
         </Route>
       </Route>

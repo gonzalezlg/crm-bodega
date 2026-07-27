@@ -7,7 +7,15 @@ const defaultInitialValues = {
   categoriaId: '',
 };
 
-function validate(values, { categoriasLoading, categoriasError, hasCategorias }) {
+function validate(
+  values,
+  {
+    categoriasLoading,
+    categoriasError,
+    hasCategoriasActivas,
+    invalidCategoriaId,
+  },
+) {
   const errors = {};
 
   if (!values.nombre.trim()) {
@@ -18,7 +26,10 @@ function validate(values, { categoriasLoading, categoriasError, hasCategorias })
     errors.categoriaId = 'Esperá a que terminen de cargar las categorías.';
   } else if (categoriasError) {
     errors.categoriaId = 'No se pudieron cargar las categorías.';
-  } else if (!hasCategorias) {
+  } else if (invalidCategoriaId && values.categoriaId === invalidCategoriaId) {
+    errors.categoriaId =
+      'La categoría actual está inactiva. Seleccioná una categoría activa.';
+  } else if (!hasCategoriasActivas) {
     errors.categoriaId = 'No hay categorías activas disponibles.';
   } else if (!values.categoriaId) {
     errors.categoriaId = 'Seleccioná una categoría.';
@@ -32,6 +43,7 @@ function ProductoForm({
   categorias = [],
   categoriasLoading = false,
   categoriasError = '',
+  invalidCategoriaId = '',
   isSubmitting = false,
   errorMessage = '',
   onSubmit,
@@ -73,11 +85,11 @@ function ProductoForm({
       return;
     }
 
-    const hasCategorias = categorias.length > 0;
     const nextErrors = validate(values, {
       categoriasLoading,
       categoriasError,
-      hasCategorias,
+      hasCategoriasActivas,
+      invalidCategoriaId,
     });
     setErrors(nextErrors);
 
@@ -87,17 +99,23 @@ function ProductoForm({
 
     onSubmit({
       nombre: values.nombre.trim(),
-      descripcion: values.descripcion.trim() || null,
+      descripcion: values.descripcion.trim(),
       categoriaId: values.categoriaId,
     });
   }
 
   const hasCategorias = categorias.length > 0;
+  const hasCategoriasActivas =
+    hasCategorias &&
+    categorias.some((categoria) => categoria.id !== invalidCategoriaId);
+  const isInvalidCategoriaSelected =
+    Boolean(invalidCategoriaId) && values.categoriaId === invalidCategoriaId;
   const submitDisabled =
     isSubmitting ||
     categoriasLoading ||
     Boolean(categoriasError) ||
-    !hasCategorias;
+    !hasCategoriasActivas ||
+    isInvalidCategoriaSelected;
 
   return (
     <form
@@ -143,18 +161,40 @@ function ProductoForm({
             </option>
             {categorias.map((categoria) => (
               <option key={categoria.id} value={categoria.id}>
-                {categoria.nombre}
+                {categoria.id === invalidCategoriaId
+                  ? `${categoria.nombre} (inactiva)`
+                  : categoria.nombre}
               </option>
             ))}
           </select>
           {errors.categoriaId && (
             <p className="mt-1 text-xs text-red-600">{errors.categoriaId}</p>
           )}
-          {!categoriasLoading && !categoriasError && !hasCategorias && (
-            <p className="mt-1 text-xs text-amber-700">
-              No hay categorías activas disponibles.
-            </p>
-          )}
+          {isInvalidCategoriaSelected &&
+            hasCategoriasActivas &&
+            !errors.categoriaId && (
+              <p className="mt-1 text-xs text-amber-700">
+                La categoría actual está inactiva. Seleccioná una categoría
+                activa para guardar los cambios.
+              </p>
+            )}
+          {isInvalidCategoriaSelected &&
+            !hasCategoriasActivas &&
+            !errors.categoriaId && (
+              <p className="mt-1 text-xs text-amber-700">
+                La categoría actual está inactiva y no hay categorías activas
+                disponibles. No es posible guardar cambios.
+              </p>
+            )}
+          {!categoriasLoading &&
+            !categoriasError &&
+            !hasCategoriasActivas &&
+            !isInvalidCategoriaSelected &&
+            !errors.categoriaId && (
+              <p className="mt-1 text-xs text-amber-700">
+                No hay categorías activas disponibles.
+              </p>
+            )}
         </div>
 
         <div className="md:col-span-2">
