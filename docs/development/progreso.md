@@ -4,9 +4,9 @@
 
 **Versión:** 0.1.0
 **Estado:** 🟢 En desarrollo
-**Etapa actual:** Dashboard
-**Próxima etapa:** Clientes
-**Última actualización:** (Completar fecha)
+**Etapa actual:** Reservas
+**Próxima etapa:** Compras y Proveedores
+**Última actualización:** 27/07/2026
 
 ---
 
@@ -210,15 +210,15 @@ Una etapa solo puede considerarse finalizada cuando:
 
 ## Etapa 5 - Productos
 
-- [ ] Modelo
-- [ ] Backend
-- [ ] Frontend
-- [ ] CRUD
-- [ ] Búsquedas
-- [ ] Validaciones
-- [ ] Pruebas
-- [ ] Documentar etapa
-- [ ] Commit
+- [x] Modelo
+- [x] Backend
+- [x] Frontend
+- [x] CRUD
+- [x] Búsquedas
+- [x] Validaciones
+- [x] Pruebas
+- [x] Documentar etapa
+- [x] Commit
 
 ---
 
