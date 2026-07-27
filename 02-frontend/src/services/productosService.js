@@ -83,3 +83,14 @@ export function obtenerProductos({
 
   return request(`/api/productos${queryString ? `?${queryString}` : ''}`);
 }
+
+export function obtenerProductoPorId(id) {
+  return request(`/api/productos/${id}`);
+}
+
+export function crearProducto(data) {
+  return request('/api/productos', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}

@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import ProductCard from '../components/productos/ProductCard';
 import { PageContainer } from '../components/layout/PageContainer';
 import { PageHeader } from '../components/layout/PageHeader';
 import { PagePagination } from '../components/layout/PagePagination';
 import { PageToolbar } from '../components/layout/PageToolbar';
-import { Button } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Loading } from '../components/ui/Loading';
 import { obtenerCategorias } from '../services/categoriasService';
@@ -129,17 +129,21 @@ function ProductosPage() {
   }
 
   const shouldShowPagination =
-      Boolean(meta) &&
-      !isLoading &&
-      !errorMessage &&
-      meta.totalPages > 1;
+    Boolean(meta) && !isLoading && !errorMessage && meta.totalPages > 1;
 
   return (
     <PageContainer>
       <PageHeader
         title="Productos"
         subtitle="Portfolio de productos de la bodega"
-        actions={<Button disabled>Nuevo producto</Button>}
+        actions={
+          <Link
+            to="/productos/nuevo"
+            className="inline-flex min-h-10 items-center justify-center rounded-md bg-zinc-950 px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-300 focus:ring-offset-2"
+          >
+            Nuevo producto
+          </Link>
+        }
       />
 
       <PageToolbar>
