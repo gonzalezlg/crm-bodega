@@ -3,9 +3,13 @@ import { Link, useParams } from 'react-router-dom';
 import { PageContainer } from '../components/layout/PageContainer';
 import { PageHeader } from '../components/layout/PageHeader';
 import { Badge } from '../components/ui/Badge';
+import { Button } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Loading } from '../components/ui/Loading';
-import { obtenerProductoPorId } from '../services/productosService';
+import {
+  actualizarEstadoProducto,
+  obtenerProductoPorId,
+} from '../services/productosService';
 
 function getCategoriaNombre(producto) {
   return producto?.categoria?.nombre || 'Sin categoría';
@@ -15,7 +19,9 @@ function ProductoDetallePage() {
   const { id } = useParams();
   const [producto, setProducto] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isUpdatingEstado, setIsUpdatingEstado] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [estadoError, setEstadoError] = useState('');
 
   useEffect(() => {
     let isMounted = true;
@@ -61,6 +67,45 @@ function ProductoDetallePage() {
     };
   }, [id]);
 
+  async function handleEstadoChange() {
+    if (isUpdatingEstado) {
+      return;
+    }
+
+    const nextActivo = !producto.activo;
+
+    if (
+      !nextActivo &&
+      !window.confirm(
+        `¿Confirmás que querés desactivar "${producto.nombre}"?`,
+      )
+    ) {
+      return;
+    }
+
+    setIsUpdatingEstado(true);
+    setEstadoError('');
+
+    try {
+      const response = await actualizarEstadoProducto(producto.id, nextActivo);
+
+      if (!response?.id) {
+        setEstadoError('No se recibió una respuesta válida del servidor.');
+        return;
+      }
+
+      setProducto(response);
+    } catch (error) {
+      setEstadoError(
+        error instanceof Error
+          ? error.message
+          : 'No se pudo actualizar el estado del producto.',
+      );
+    } finally {
+      setIsUpdatingEstado(false);
+    }
+  }
+
   if (isLoading) {
     return (
       <PageContainer>
@@ -96,10 +141,27 @@ function ProductoDetallePage() {
             </Badge>
             <Link
               to={`/productos/${producto.id}/editar`}
-              className="inline-flex min-h-10 items-center justify-center rounded-md bg-zinc-950 px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-300 focus:ring-offset-2"
+              aria-disabled={isUpdatingEstado}
+              tabIndex={isUpdatingEstado ? -1 : undefined}
+              onClick={(event) => {
+                if (isUpdatingEstado) {
+                  event.preventDefault();
+                }
+              }}
+              className={`inline-flex min-h-10 items-center justify-center rounded-md bg-zinc-950 px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-300 focus:ring-offset-2 ${
+                isUpdatingEstado ? 'pointer-events-none opacity-70' : ''
+              }`}
             >
               Editar
             </Link>
+            <Button
+              variant={producto.activo ? 'danger' : 'secondary'}
+              loading={isUpdatingEstado}
+              disabled={isUpdatingEstado}
+              onClick={handleEstadoChange}
+            >
+              {producto.activo ? 'Desactivar' : 'Activar'}
+            </Button>
             <VolverLink />
           </>
         }
@@ -120,6 +182,12 @@ function ProductoDetallePage() {
             className="md:col-span-2"
           />
         </dl>
+
+        {estadoError && (
+          <div className="mt-5 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {estadoError}
+          </div>
+        )}
       </section>
     </PageContainer>
   );

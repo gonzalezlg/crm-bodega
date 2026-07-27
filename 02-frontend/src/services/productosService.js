@@ -101,3 +101,12 @@ export function actualizarProducto(id, data) {
     body: JSON.stringify(data),
   });
 }
+
+export function actualizarEstadoProducto(id, activo) {
+  return request(`/api/productos/${id}/estado`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      activo,
+    }),
+  });
+}
