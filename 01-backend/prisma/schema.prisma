@@ -23,6 +23,14 @@ enum AvailabilityExceptionType {
   EXTRA_SLOT
 }
 
+enum ReservationStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  ATTENDED
+  NO_SHOW
+}
+
 model Rol {
   id          Int       @id @default(autoincrement())
   nombre      String    @unique
@@ -97,6 +105,7 @@ model Experience {
   active                 Boolean                 @default(true)
   timeSlots              TimeSlot[]
   availabilityExceptions AvailabilityException[]
+  reservations           Reservation[]
   createdAt              DateTime                @default(now()) @map("created_at")
   updatedAt              DateTime                @updatedAt @map("updated_at")
 
@@ -139,4 +148,22 @@ model AvailabilityException {
   @@index([experienceId])
   @@index([date])
   @@map("availability_exceptions")
+}
+
+model Reservation {
+  id           String            @id @default(uuid()) @db.Uuid
+  experienceId String            @map("experience_id") @db.Uuid
+  experience   Experience        @relation(fields: [experienceId], references: [id], onDelete: Restrict)
+  date         DateTime          @db.Date
+  startTime    String            @map("start_time")
+  peopleCount  Int               @map("people_count")
+  status       ReservationStatus @default(PENDING)
+  notes        String?
+  createdAt    DateTime          @default(now()) @map("created_at")
+  updatedAt    DateTime          @updatedAt @map("updated_at")
+
+  @@index([experienceId])
+  @@index([date])
+  @@index([experienceId, date, startTime])
+  @@map("reservations")
 }
