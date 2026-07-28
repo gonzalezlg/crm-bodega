@@ -4,6 +4,7 @@ import MainLayout from '../layouts/MainLayout';
 import CategoriasPage from '../pages/CategoriasPage';
 import ClientesPage from '../pages/ClientesPage';
 import DashboardPage from '../pages/DashboardPage';
+import ExperiencesPage from '../pages/ExperiencesPage';
 import LoginPage from '../pages/LoginPage';
 import ProductoDetallePage from '../pages/ProductoDetallePage';
 import ProductoEditarPage from '../pages/ProductoEditarPage';
@@ -20,6 +21,7 @@ function AppRoutes() {
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/clientes" element={<ClientesPage />} />
           <Route path="/categorias" element={<CategoriasPage />} />
+          <Route path="/experiences" element={<ExperiencesPage />} />
           <Route path="/productos" element={<ProductosPage />} />
           <Route path="/productos/nuevo" element={<ProductoNuevoPage />} />
           <Route path="/productos/:id/editar" element={<ProductoEditarPage />} />
