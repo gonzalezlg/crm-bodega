@@ -6,10 +6,17 @@ import { AuthGuard } from './auth/guards/auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 import { CategoriasModule } from './categorias/categorias.module';
 import { ClientesModule } from './clientes/clientes.module';
+import { ExperiencesModule } from './experiences/experiences.module';
 import { ProductosModule } from './productos/productos.module';
 
 @Module({
-  imports: [AuthModule, ClientesModule, CategoriasModule, ProductosModule],
+  imports: [
+    AuthModule,
+    ClientesModule,
+    CategoriasModule,
+    ProductosModule,
+    ExperiencesModule,
+  ],
   controllers: [AppController],
   providers: [
     {
