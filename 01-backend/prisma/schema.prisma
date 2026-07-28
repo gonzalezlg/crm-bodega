@@ -17,6 +17,12 @@ enum Weekday {
   SUNDAY
 }
 
+enum AvailabilityExceptionType {
+  CLOSED
+  CAPACITY_OVERRIDE
+  EXTRA_SLOT
+}
+
 model Rol {
   id          Int       @id @default(autoincrement())
   nombre      String    @unique
@@ -84,31 +90,53 @@ model Producto {
 }
 
 model Experience {
-  id              String     @id @default(uuid()) @db.Uuid
-  name            String
-  description     String?
-  durationMinutes Int        @map("duration_minutes")
-  active          Boolean    @default(true)
-  timeSlots       TimeSlot[]
-  createdAt       DateTime   @default(now()) @map("created_at")
-  updatedAt       DateTime   @updatedAt @map("updated_at")
+  id                     String                  @id @default(uuid()) @db.Uuid
+  name                   String
+  description            String?
+  durationMinutes        Int                     @map("duration_minutes")
+  active                 Boolean                 @default(true)
+  timeSlots              TimeSlot[]
+  availabilityExceptions AvailabilityException[]
+  createdAt              DateTime                @default(now()) @map("created_at")
+  updatedAt              DateTime                @updatedAt @map("updated_at")
 
   @@map("experiences")
 }
 
 model TimeSlot {
-  id           String     @id @default(uuid()) @db.Uuid
-  experienceId String     @map("experience_id") @db.Uuid
-  experience   Experience @relation(fields: [experienceId], references: [id], onDelete: Restrict)
-  weekday      Weekday
-  startTime    String     @map("start_time")
-  maxPeople    Int        @map("max_people")
-  active       Boolean    @default(true)
-  createdAt    DateTime   @default(now()) @map("created_at")
-  updatedAt    DateTime   @updatedAt @map("updated_at")
+  id                     String                  @id @default(uuid()) @db.Uuid
+  experienceId           String                  @map("experience_id") @db.Uuid
+  experience             Experience              @relation(fields: [experienceId], references: [id], onDelete: Restrict)
+  weekday                Weekday
+  startTime              String                  @map("start_time")
+  maxPeople              Int                     @map("max_people")
+  active                 Boolean                 @default(true)
+  availabilityExceptions AvailabilityException[]
+  createdAt              DateTime                @default(now()) @map("created_at")
+  updatedAt              DateTime                @updatedAt @map("updated_at")
 
   @@unique([experienceId, weekday, startTime])
   @@index([experienceId])
   @@index([weekday])
   @@map("time_slots")
+}
+
+model AvailabilityException {
+  id           String                    @id @default(uuid()) @db.Uuid
+  experienceId String                    @map("experience_id") @db.Uuid
+  experience   Experience                @relation(fields: [experienceId], references: [id])
+  timeSlotId   String?                   @map("time_slot_id") @db.Uuid
+  timeSlot     TimeSlot?                 @relation(fields: [timeSlotId], references: [id])
+  date         DateTime                  @db.Date
+  startTime    String                    @map("start_time")
+  type         AvailabilityExceptionType
+  capacity     Int?
+  active       Boolean                   @default(true)
+  createdAt    DateTime                  @default(now()) @map("created_at")
+  updatedAt    DateTime                  @updatedAt @map("updated_at")
+
+  @@unique([experienceId, date, startTime])
+  @@index([experienceId])
+  @@index([date])
+  @@map("availability_exceptions")
 }
