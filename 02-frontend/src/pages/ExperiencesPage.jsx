@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import ConfirmStatusDialog from '../components/common/ConfirmStatusDialog';
+import FeedbackMessages from '../components/common/FeedbackMessages';
 import ExperienceForm from '../components/experiences/ExperienceForm';
 import ExperiencesTable from '../components/experiences/ExperiencesTable';
 import {
@@ -12,6 +15,7 @@ function getErrorMessages(error) {
 }
 
 function ExperiencesPage() {
+  const navigate = useNavigate();
   const [experiences, setExperiences] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -56,6 +60,10 @@ function ExperiencesPage() {
     clearMessages();
   }
 
+  function openTimeSlots(experience) {
+    navigate(`/experiences/${experience.id}/time-slots`);
+  }
+
   function closeForm() {
     setShowForm(false);
     setEditingExperience(null);
@@ -85,10 +93,6 @@ function ExperiencesPage() {
       );
       closeForm();
       await loadExperiences();
-      window.scrollTo({
-        top: 0,
-        behavior: 'smooth',
-      });
     } catch (error) {
       setSaveErrors(getErrorMessages(error));
     } finally {
@@ -118,10 +122,6 @@ function ExperiencesPage() {
           : 'Experiencia desactivada correctamente.',
       );
       await loadExperiences();
-      window.scrollTo({
-        top: 0,
-        behavior: 'smooth',
-      });
     } catch (error) {
       setStatusErrors(getErrorMessages(error));
     } finally {
@@ -149,7 +149,7 @@ function ExperiencesPage() {
         </button>
       </div>
 
-      <Messages
+      <FeedbackMessages
         queryErrors={queryErrors}
         saveErrors={saveErrors}
         statusErrors={statusErrors}
@@ -172,12 +172,24 @@ function ExperiencesPage() {
         isLoading={isLoading}
         onEdit={openEditForm}
         onChangeStatus={setExperienceToChangeStatus}
+        onManageTimeSlots={openTimeSlots}
       />
 
       {experienceToChangeStatus && (
         <ConfirmStatusDialog
-          experience={experienceToChangeStatus}
-          isChangingStatus={isChangingStatus}
+          title={`${
+            experienceToChangeStatus.active ? 'Desactivar' : 'Activar'
+          } experiencia`}
+          message={`Vas a ${
+            experienceToChangeStatus.active ? 'desactivar' : 'activar'
+          } la experiencia ${experienceToChangeStatus.name}.`}
+          confirmLabel={
+            experienceToChangeStatus.active ? 'Desactivar' : 'Activar'
+          }
+          isLoading={isChangingStatus}
+          confirmVariant={
+            experienceToChangeStatus.active ? 'danger' : 'success'
+          }
           onCancel={() => {
             setExperienceToChangeStatus(null);
             setStatusErrors([]);
@@ -186,84 +198,6 @@ function ExperiencesPage() {
         />
       )}
     </section>
-  );
-}
-
-function Messages({
-  queryErrors,
-  saveErrors,
-  statusErrors,
-  successMessage,
-}) {
-  const errors = [...queryErrors, ...saveErrors, ...statusErrors].filter(
-    Boolean,
-  );
-
-  return (
-    <div className="mb-4 space-y-3">
-      {successMessage && (
-        <div className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-          {successMessage}
-        </div>
-      )}
-
-      {errors.map((error, index) => (
-        <div
-          key={`${error}-${index}`}
-          className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
-        >
-          {error}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function ConfirmStatusDialog({
-  experience,
-  isChangingStatus,
-  onCancel,
-  onConfirm,
-}) {
-  const nextAction = experience.active ? 'desactivar' : 'activar';
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/40 px-4">
-      <div className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl">
-        <h3 className="text-lg font-semibold text-zinc-950">
-          {experience.active ? 'Desactivar' : 'Activar'} experiencia
-        </h3>
-        <p className="mt-2 text-sm text-zinc-600">
-          Vas a {nextAction} la experiencia {experience.name}.
-        </p>
-        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={isChangingStatus}
-            className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-70"
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            disabled={isChangingStatus}
-            className={`rounded-md px-4 py-2 text-sm font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-70 ${
-              experience.active
-                ? 'bg-red-700 hover:bg-red-800'
-                : 'bg-emerald-700 hover:bg-emerald-800'
-            }`}
-          >
-            {isChangingStatus
-              ? 'Guardando...'
-              : experience.active
-                ? 'Desactivar'
-                : 'Activar'}
-          </button>
-        </div>
-      </div>
-    </div>
   );
 }
 
