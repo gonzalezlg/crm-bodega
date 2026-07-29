@@ -70,6 +70,28 @@ export class ReservationsService {
     });
   }
 
+  async findOne(id: string): Promise<ReservationWithExperience> {
+    const reservation = await this.prisma.reservation.findUnique({
+      where: {
+        id,
+      },
+      include: {
+        experience: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    if (!reservation) {
+      throw new NotFoundException('Reserva no encontrada.');
+    }
+
+    return reservation;
+  }
+
   async create(createReservationDto: CreateReservationDto) {
     const config = this.getReservationConfig();
     this.validateTemporalRules(createReservationDto, config);

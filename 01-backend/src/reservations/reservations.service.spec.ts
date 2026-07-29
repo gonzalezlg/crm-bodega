@@ -149,6 +149,7 @@ function createService() {
     getAvailability: mockFunction(),
   };
 
+  prisma.reservation.findUnique.mockResolvedValue(baseReservation);
   prisma.$transaction.mockResolvedValue(undefined);
   prisma.$transaction = Object.assign(
     async (
@@ -245,6 +246,60 @@ describe('ReservationsService', () => {
     const result = await service.findAll({});
 
     assert.deepEqual(result, []);
+  });
+
+  it('devuelve una reserva por id cuando existe', async () => {
+    const { service, prisma } = createService();
+    const reservationWithExperience = {
+      ...baseReservation,
+      experience: {
+        id: baseDto.experienceId,
+        name: 'Degustacion',
+      },
+    };
+    prisma.reservation.findUnique.mockResolvedValue(reservationWithExperience);
+
+    const result = await service.findOne('reservation-id');
+
+    assert.deepEqual(result, reservationWithExperience);
+  });
+
+  it('devuelve NotFoundException cuando la reserva no existe al buscar por id', async () => {
+    const { service, prisma } = createService();
+    prisma.reservation.findUnique.mockResolvedValue(null);
+
+    await assert.rejects(
+      () => service.findOne('missing-reservation-id'),
+      NotFoundException,
+    );
+  });
+
+  it('busca una reserva por id con include de experience id y name', async () => {
+    const { service, prisma } = createService();
+
+    await service.findOne('reservation-id');
+
+    assert.deepEqual(prisma.reservation.findUnique.calls[0][0], {
+      where: {
+        id: 'reservation-id',
+      },
+      include: {
+        experience: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+  });
+
+  it('no utiliza prisma.$transaction al buscar una reserva por id', async () => {
+    const { service, prisma } = createService();
+
+    await service.findOne('reservation-id');
+
+    assert.equal(prisma.$transaction.calls.length, 0);
   });
 
   it('crea una reserva valida', async () => {

@@ -32,6 +32,12 @@ export class ReservationsController {
     return this.reservationsService.findAll(query);
   }
 
+  @Get(':id')
+  @Roles('OWNER')
+  findOne(@Param('id', ParseUUIDPipe) id: string) {
+    return this.reservationsService.findOne(id);
+  }
+
   @Post()
   @Roles('OWNER')
   create(@Body() createReservationDto: CreateReservationDto) {
