@@ -4,10 +4,12 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { AvailabilityExceptionType, Weekday } from '@prisma/client';
+import { AvailabilityExceptionType, Prisma, Weekday } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AvailableSlotDto } from './dto/available-slot.dto';
 import { AvailabilityResultDto } from './dto/availability-result.dto';
+
+export type DatabaseClient = PrismaService | Prisma.TransactionClient;
 
 type ParsedDate = {
   date: Date;
@@ -21,12 +23,14 @@ export class AvailabilityService {
   async getAvailability(
     experienceId: string,
     date: string,
+    databaseClient?: DatabaseClient,
   ): Promise<AvailabilityResultDto> {
     const parsedDate = this.parseDate(date);
+    const db = databaseClient ?? this.prisma;
 
-    await this.findExperienceOrThrow(experienceId);
+    await this.findExperienceOrThrow(experienceId, db);
 
-    const timeSlots = await this.prisma.timeSlot.findMany({
+    const timeSlots = await db.timeSlot.findMany({
       where: {
         experienceId,
         weekday: parsedDate.weekday,
@@ -48,7 +52,7 @@ export class AvailabilityService {
       });
     }
 
-    const exceptions = await this.prisma.availabilityException.findMany({
+    const exceptions = await db.availabilityException.findMany({
       where: {
         experienceId,
         date: parsedDate.date,
@@ -103,8 +107,8 @@ export class AvailabilityService {
     };
   }
 
-  private async findExperienceOrThrow(id: string) {
-    const experience = await this.prisma.experience.findUnique({
+  private async findExperienceOrThrow(id: string, db: DatabaseClient) {
+    const experience = await db.experience.findUnique({
       where: { id },
       select: {
         id: true,

@@ -9,6 +9,7 @@ import { CategoriasModule } from './categorias/categorias.module';
 import { ClientesModule } from './clientes/clientes.module';
 import { ExperiencesModule } from './experiences/experiences.module';
 import { ProductosModule } from './productos/productos.module';
+import { ReservationsModule } from './reservations/reservations.module';
 import { TimeSlotsModule } from './time-slots/time-slots.module';
 
 @Module({
@@ -20,6 +21,7 @@ import { TimeSlotsModule } from './time-slots/time-slots.module';
     ExperiencesModule,
     TimeSlotsModule,
     AvailabilityModule,
+    ReservationsModule,
   ],
   controllers: [AppController],
   providers: [
