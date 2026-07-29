@@ -1005,4 +1005,373 @@ describe('ReservationsService', () => {
     );
     assert.equal(prisma.$transaction.calls.length, 1);
   });
+
+  it('registra la asistencia de una reserva CONFIRMED', async () => {
+    const { service, tx } = createService();
+    tx.reservation.findUnique.mockResolvedValue({
+      ...baseReservation,
+      date: new Date('2026-08-01T00:00:00.000Z'),
+      startTime: '15:00',
+      status: ReservationStatus.CONFIRMED,
+    });
+    tx.reservation.update.mockResolvedValue({
+      ...baseReservation,
+      status: ReservationStatus.ATTENDED,
+    });
+
+    await service.attend('reservation-id');
+
+    assert.deepEqual(tx.reservation.update.calls[0][0], {
+      where: {
+        id: 'reservation-id',
+      },
+      data: {
+        status: ReservationStatus.ATTENDED,
+      },
+    });
+  });
+
+  it('devuelve la reserva asistida actualizada', async () => {
+    const { service, tx } = createService();
+    const updatedReservation = {
+      ...baseReservation,
+      date: new Date('2026-08-01T00:00:00.000Z'),
+      startTime: '15:00',
+      status: ReservationStatus.ATTENDED,
+      updatedAt: new Date('2026-08-01T18:04:00.000Z'),
+    };
+    tx.reservation.findUnique.mockResolvedValue({
+      ...baseReservation,
+      date: new Date('2026-08-01T00:00:00.000Z'),
+      startTime: '15:00',
+      status: ReservationStatus.CONFIRMED,
+    });
+    tx.reservation.update.mockResolvedValue(updatedReservation);
+
+    const result = await service.attend('reservation-id');
+
+    assert.deepEqual(result, updatedReservation);
+  });
+
+  it('la asistencia cambia unicamente el status', async () => {
+    const { service, tx } = createService();
+    tx.reservation.findUnique.mockResolvedValue({
+      ...baseReservation,
+      date: new Date('2026-08-01T00:00:00.000Z'),
+      startTime: '15:00',
+      status: ReservationStatus.CONFIRMED,
+    });
+
+    await service.attend('reservation-id');
+
+    assert.deepEqual(
+      (tx.reservation.update.calls[0][0] as { data: unknown }).data,
+      {
+        status: ReservationStatus.ATTENDED,
+      },
+    );
+  });
+
+  it('devuelve 404 al registrar asistencia si la reserva no existe', async () => {
+    const { service, tx } = createService();
+    tx.reservation.findUnique.mockResolvedValue(null);
+
+    await assert.rejects(
+      () => service.attend('missing-reservation-id'),
+      NotFoundException,
+    );
+  });
+
+  it('devuelve 409 al registrar asistencia si la reserva esta PENDING', async () => {
+    const { service, tx } = createService();
+    tx.reservation.findUnique.mockResolvedValue({
+      ...baseReservation,
+      status: ReservationStatus.PENDING,
+    });
+
+    await assert.rejects(
+      () => service.attend('reservation-id'),
+      ConflictException,
+    );
+  });
+
+  it('devuelve 409 al registrar asistencia si la reserva ya esta ATTENDED', async () => {
+    const { service, tx } = createService();
+    tx.reservation.findUnique.mockResolvedValue({
+      ...baseReservation,
+      status: ReservationStatus.ATTENDED,
+    });
+
+    await assert.rejects(
+      () => service.attend('reservation-id'),
+      ConflictException,
+    );
+  });
+
+  it('devuelve 409 al registrar asistencia si la reserva esta CANCELLED', async () => {
+    const { service, tx } = createService();
+    tx.reservation.findUnique.mockResolvedValue({
+      ...baseReservation,
+      status: ReservationStatus.CANCELLED,
+    });
+
+    await assert.rejects(
+      () => service.attend('reservation-id'),
+      ConflictException,
+    );
+  });
+
+  it('devuelve 409 al registrar asistencia si la reserva esta NO_SHOW', async () => {
+    const { service, tx } = createService();
+    tx.reservation.findUnique.mockResolvedValue({
+      ...baseReservation,
+      status: ReservationStatus.NO_SHOW,
+    });
+
+    await assert.rejects(
+      () => service.attend('reservation-id'),
+      ConflictException,
+    );
+  });
+
+  it('devuelve 409 si el horario todavia no comenzo al registrar asistencia', async () => {
+    const { service, tx } = createService();
+    tx.reservation.findUnique.mockResolvedValue({
+      ...baseReservation,
+      date: new Date('2026-08-01T00:00:00.000Z'),
+      startTime: '15:01',
+      status: ReservationStatus.CONFIRMED,
+    });
+
+    await assert.rejects(
+      () => service.attend('reservation-id'),
+      ConflictException,
+    );
+  });
+
+  it('permite registrar asistencia exactamente al horario de inicio', async () => {
+    const { service, tx } = createService();
+    tx.reservation.findUnique.mockResolvedValue({
+      ...baseReservation,
+      date: new Date('2026-08-01T00:00:00.000Z'),
+      startTime: '15:00',
+      status: ReservationStatus.CONFIRMED,
+    });
+    tx.reservation.update.mockResolvedValue({
+      ...baseReservation,
+      status: ReservationStatus.ATTENDED,
+    });
+
+    const result = await service.attend('reservation-id');
+
+    assert.equal(result.status, ReservationStatus.ATTENDED);
+  });
+
+  it('permite registrar asistencia despues del horario de inicio', async () => {
+    const { service, tx } = createService();
+    tx.reservation.findUnique.mockResolvedValue({
+      ...baseReservation,
+      date: new Date('2026-08-01T00:00:00.000Z'),
+      startTime: '14:59',
+      status: ReservationStatus.CONFIRMED,
+    });
+    tx.reservation.update.mockResolvedValue({
+      ...baseReservation,
+      status: ReservationStatus.ATTENDED,
+    });
+
+    const result = await service.attend('reservation-id');
+
+    assert.equal(result.status, ReservationStatus.ATTENDED);
+  });
+
+  it('permite registrar asistencia en dias posteriores', async () => {
+    const { service, tx } = createService();
+    tx.reservation.findUnique.mockResolvedValue({
+      ...baseReservation,
+      date: new Date('2026-07-31T00:00:00.000Z'),
+      startTime: '10:00',
+      status: ReservationStatus.CONFIRMED,
+    });
+    tx.reservation.update.mockResolvedValue({
+      ...baseReservation,
+      status: ReservationStatus.ATTENDED,
+    });
+
+    const result = await service.attend('reservation-id');
+
+    assert.equal(result.status, ReservationStatus.ATTENDED);
+  });
+
+  it('la asistencia utiliza prisma.$transaction', async () => {
+    const { service, prisma, tx } = createService();
+    tx.reservation.findUnique.mockResolvedValue({
+      ...baseReservation,
+      date: new Date('2026-08-01T00:00:00.000Z'),
+      startTime: '15:00',
+      status: ReservationStatus.CONFIRMED,
+    });
+
+    await service.attend('reservation-id');
+
+    assert.equal(prisma.$transaction.calls.length, 1);
+  });
+
+  it('la asistencia utiliza aislamiento Serializable', async () => {
+    const { service, prisma, tx } = createService();
+    tx.reservation.findUnique.mockResolvedValue({
+      ...baseReservation,
+      date: new Date('2026-08-01T00:00:00.000Z'),
+      startTime: '15:00',
+      status: ReservationStatus.CONFIRMED,
+    });
+
+    await service.attend('reservation-id');
+
+    assert.deepEqual(prisma.$transaction.calls[0][1], {
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+    });
+  });
+
+  it('findUnique se ejecuta con tx.reservation al registrar asistencia', async () => {
+    const { service, tx } = createService();
+    tx.reservation.findUnique.mockResolvedValue({
+      ...baseReservation,
+      date: new Date('2026-08-01T00:00:00.000Z'),
+      startTime: '15:00',
+      status: ReservationStatus.CONFIRMED,
+    });
+
+    await service.attend('reservation-id');
+
+    assert.deepEqual(tx.reservation.findUnique.calls[0][0], {
+      where: {
+        id: 'reservation-id',
+      },
+    });
+  });
+
+  it('update se ejecuta con tx.reservation al registrar asistencia', async () => {
+    const { service, tx } = createService();
+    tx.reservation.findUnique.mockResolvedValue({
+      ...baseReservation,
+      date: new Date('2026-08-01T00:00:00.000Z'),
+      startTime: '15:00',
+      status: ReservationStatus.CONFIRMED,
+    });
+
+    await service.attend('reservation-id');
+
+    assert.deepEqual(tx.reservation.update.calls[0][0], {
+      where: {
+        id: 'reservation-id',
+      },
+      data: {
+        status: ReservationStatus.ATTENDED,
+      },
+    });
+  });
+
+  it('no utiliza prisma.reservation directamente durante la asistencia', async () => {
+    const { service, prisma, tx } = createService();
+    tx.reservation.findUnique.mockResolvedValue({
+      ...baseReservation,
+      date: new Date('2026-08-01T00:00:00.000Z'),
+      startTime: '15:00',
+      status: ReservationStatus.CONFIRMED,
+    });
+
+    await service.attend('reservation-id');
+
+    assert.equal(prisma.reservation.findUnique.calls.length, 0);
+    assert.equal(prisma.reservation.update.calls.length, 0);
+  });
+
+  it('reintenta la asistencia cuando ocurre un error P2034', async () => {
+    const { service, prisma, tx } = createService();
+    let attempts = 0;
+    tx.reservation.findUnique.mockResolvedValue({
+      ...baseReservation,
+      date: new Date('2026-08-01T00:00:00.000Z'),
+      startTime: '15:00',
+      status: ReservationStatus.CONFIRMED,
+    });
+    prisma.$transaction = Object.assign(
+      async (
+        callback: (transactionClient: TransactionMock) => Promise<unknown>,
+        options: unknown,
+      ) => {
+        prisma.$transaction.calls.push([callback, options]);
+        attempts += 1;
+
+        if (attempts === 1) {
+          throw createPrismaKnownError('P2034');
+        }
+
+        return callback(tx);
+      },
+      prisma.$transaction,
+    );
+
+    await service.attend('reservation-id');
+
+    assert.equal(prisma.$transaction.calls.length, 2);
+  });
+
+  it('la asistencia tiene un maximo de 3 intentos ante P2034', async () => {
+    const { service, prisma } = createService();
+    prisma.$transaction = Object.assign(
+      async (_callback: unknown, options: unknown) => {
+        prisma.$transaction.calls.push([_callback, options]);
+        throw createPrismaKnownError('P2034');
+      },
+      prisma.$transaction,
+    );
+
+    await assert.rejects(
+      () => service.attend('reservation-id'),
+      ConflictException,
+    );
+    assert.equal(prisma.$transaction.calls.length, 3);
+  });
+
+  it('despues de 3 errores P2034 al registrar asistencia devuelve ConflictException con mensaje de concurrencia', async () => {
+    const { service, prisma } = createService();
+    prisma.$transaction = Object.assign(
+      async (_callback: unknown, options: unknown) => {
+        prisma.$transaction.calls.push([_callback, options]);
+        throw createPrismaKnownError('P2034');
+      },
+      prisma.$transaction,
+    );
+
+    await assert.rejects(
+      () => service.attend('reservation-id'),
+      (error: unknown) => {
+        assert.ok(error instanceof ConflictException);
+        assert.equal(
+          error.message,
+          'No fue posible registrar la asistencia debido a un conflicto de concurrencia. Intente nuevamente.',
+        );
+        return true;
+      },
+    );
+  });
+
+  it('la asistencia no reintenta errores diferentes de P2034', async () => {
+    const { service, prisma } = createService();
+    prisma.$transaction = Object.assign(
+      async (_callback: unknown, options: unknown) => {
+        prisma.$transaction.calls.push([_callback, options]);
+        throw createPrismaKnownError('P2002');
+      },
+      prisma.$transaction,
+    );
+
+    await assert.rejects(
+      () => service.attend('reservation-id'),
+      Prisma.PrismaClientKnownRequestError,
+    );
+    assert.equal(prisma.$transaction.calls.length, 1);
+  });
 });

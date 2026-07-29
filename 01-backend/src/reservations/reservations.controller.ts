@@ -40,4 +40,10 @@ export class ReservationsController {
   confirm(@Param('id', ParseUUIDPipe) id: string) {
     return this.reservationsService.confirm(id);
   }
+
+  @Patch(':id/attend')
+  @Roles('OWNER')
+  attend(@Param('id', ParseUUIDPipe) id: string) {
+    return this.reservationsService.attend(id);
+  }
 }
