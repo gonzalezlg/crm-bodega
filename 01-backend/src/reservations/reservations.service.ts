@@ -9,6 +9,7 @@ import { AvailabilityService } from '../availability/availability.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateReservationDto } from './dto/create-reservation.dto';
 import { ListReservationsDto } from './dto/list-reservations.dto';
+import { UpdateReservationDto } from './dto/update-reservation.dto';
 
 type BusinessDateTime = {
   date: string;
@@ -19,6 +20,13 @@ type ReservationConfig = {
   businessTimeZone: string;
   reservationWindowDays: number;
   minReservationNoticeMinutes: number;
+};
+
+type ReservationAvailabilityData = {
+  experienceId: string;
+  date: string;
+  startTime: string;
+  peopleCount: number;
 };
 
 type ReservationWithExperience = Prisma.ReservationGetPayload<{
@@ -119,6 +127,33 @@ export class ReservationsService {
 
     throw new ConflictException(
       'No fue posible completar la reserva debido a un conflicto de disponibilidad. Intente nuevamente.',
+    );
+  }
+
+  async update(id: string, updateReservationDto: UpdateReservationDto) {
+    for (let attempt = 1; attempt <= this.maxTransactionAttempts; attempt++) {
+      try {
+        return await this.prisma.$transaction(
+          (tx) => this.updateInsideTransaction(id, updateReservationDto, tx),
+          {
+            isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+          },
+        );
+      } catch (error) {
+        if (!this.isPrismaTransactionConflict(error)) {
+          throw error;
+        }
+
+        if (attempt === this.maxTransactionAttempts) {
+          throw new ConflictException(
+            'No fue posible actualizar la reserva debido a un conflicto de concurrencia. Intente nuevamente.',
+          );
+        }
+      }
+    }
+
+    throw new ConflictException(
+      'No fue posible actualizar la reserva debido a un conflicto de concurrencia. Intente nuevamente.',
     );
   }
 
@@ -228,6 +263,97 @@ export class ReservationsService {
     throw new ConflictException(
       'No fue posible registrar la ausencia debido a un conflicto de concurrencia. Intente nuevamente.',
     );
+  }
+
+  private async updateInsideTransaction(
+    id: string,
+    updateReservationDto: UpdateReservationDto,
+    tx: Prisma.TransactionClient,
+  ) {
+    const reservation = await tx.reservation.findUnique({
+      where: { id },
+    });
+
+    if (!reservation) {
+      throw new NotFoundException('Reserva no encontrada.');
+    }
+
+    this.validateReservationCanBeEdited(reservation.status);
+
+    const currentReservationDate = this.formatPrismaDate(reservation.date);
+    const resultingReservation: ReservationAvailabilityData = {
+      experienceId: updateReservationDto.experienceId ?? reservation.experienceId,
+      date: updateReservationDto.date ?? currentReservationDate,
+      startTime: updateReservationDto.startTime ?? reservation.startTime,
+      peopleCount: updateReservationDto.peopleCount ?? reservation.peopleCount,
+    };
+
+    if (
+      this.hasAvailabilityDataChanged(
+        reservation,
+        currentReservationDate,
+        updateReservationDto,
+      )
+    ) {
+      const config = this.getReservationConfig();
+      this.validateTemporalRules(resultingReservation, config);
+
+      const experience = await tx.experience.findUnique({
+        where: {
+          id: resultingReservation.experienceId,
+        },
+        select: {
+          id: true,
+          active: true,
+        },
+      });
+
+      if (!experience) {
+        throw new NotFoundException('Experiencia no encontrada.');
+      }
+
+      if (!experience.active) {
+        throw new BadRequestException(
+          'La experiencia no se encuentra disponible para recibir reservas.',
+        );
+      }
+
+      const availability = await this.availabilityService.getAvailability(
+        resultingReservation.experienceId,
+        resultingReservation.date,
+        tx,
+      );
+      const slot = availability.slots.find(
+        (availableSlot) =>
+          availableSlot.startTime === resultingReservation.startTime,
+      );
+
+      if (!slot) {
+        throw new BadRequestException(
+          'El horario seleccionado no se encuentra disponible.',
+        );
+      }
+
+      const reservationDate = this.toPrismaDate(resultingReservation.date);
+      const occupiedPeople = await this.getOccupiedPeople(
+        resultingReservation,
+        reservationDate,
+        tx,
+        id,
+      );
+      const remainingCapacity = slot.capacity - occupiedPeople;
+
+      if (resultingReservation.peopleCount > remainingCapacity) {
+        throw new ConflictException(
+          'No hay disponibilidad suficiente para la cantidad de personas solicitada.',
+        );
+      }
+    }
+
+    return tx.reservation.update({
+      where: { id },
+      data: this.buildUpdateData(updateReservationDto),
+    });
   }
 
   private async noShowInsideTransaction(
@@ -385,25 +511,62 @@ export class ReservationsService {
   }
 
   private async getOccupiedPeople(
-    createReservationDto: CreateReservationDto,
+    reservationData: ReservationAvailabilityData,
     reservationDate: Date,
     tx: Prisma.TransactionClient,
+    excludedReservationId?: string,
   ): Promise<number> {
-    const result = await tx.reservation.aggregate({
-      where: {
-        experienceId: createReservationDto.experienceId,
-        date: reservationDate,
-        startTime: createReservationDto.startTime,
-        status: {
-          not: ReservationStatus.CANCELLED,
-        },
+    const where: Prisma.ReservationWhereInput = {
+      experienceId: reservationData.experienceId,
+      date: reservationDate,
+      startTime: reservationData.startTime,
+      status: {
+        not: ReservationStatus.CANCELLED,
       },
+    };
+
+    if (excludedReservationId) {
+      where.id = {
+        not: excludedReservationId,
+      };
+    }
+
+    const result = await tx.reservation.aggregate({
+      where,
       _sum: {
         peopleCount: true,
       },
     });
 
     return result._sum.peopleCount ?? 0;
+  }
+
+  private buildUpdateData(
+    updateReservationDto: UpdateReservationDto,
+  ): Prisma.ReservationUncheckedUpdateInput {
+    const data: Prisma.ReservationUncheckedUpdateInput = {};
+
+    if (updateReservationDto.experienceId !== undefined) {
+      data.experienceId = updateReservationDto.experienceId;
+    }
+
+    if (updateReservationDto.date !== undefined) {
+      data.date = this.toPrismaDate(updateReservationDto.date);
+    }
+
+    if (updateReservationDto.startTime !== undefined) {
+      data.startTime = updateReservationDto.startTime;
+    }
+
+    if (updateReservationDto.peopleCount !== undefined) {
+      data.peopleCount = updateReservationDto.peopleCount;
+    }
+
+    if (updateReservationDto.notes !== undefined) {
+      data.notes = updateReservationDto.notes;
+    }
+
+    return data;
   }
 
   private buildFilters(
@@ -673,6 +836,39 @@ export class ReservationsService {
         'No se puede registrar la ausencia antes de que haya comenzado la reserva.',
       );
     }
+  }
+
+  private validateReservationCanBeEdited(status: ReservationStatus): void {
+    if (
+      status === ReservationStatus.CANCELLED ||
+      status === ReservationStatus.ATTENDED ||
+      status === ReservationStatus.NO_SHOW
+    ) {
+      throw new ConflictException(
+        'La reserva no puede editarse en su estado actual.',
+      );
+    }
+  }
+
+  private hasAvailabilityDataChanged(
+    reservation: {
+      experienceId: string;
+      startTime: string;
+      peopleCount: number;
+    },
+    currentReservationDate: string,
+    updateReservationDto: UpdateReservationDto,
+  ): boolean {
+    return (
+      (updateReservationDto.experienceId !== undefined &&
+        updateReservationDto.experienceId !== reservation.experienceId) ||
+      (updateReservationDto.date !== undefined &&
+        updateReservationDto.date !== currentReservationDate) ||
+      (updateReservationDto.startTime !== undefined &&
+        updateReservationDto.startTime !== reservation.startTime) ||
+      (updateReservationDto.peopleCount !== undefined &&
+        updateReservationDto.peopleCount !== reservation.peopleCount)
+    );
   }
 
   private getDayIndex(date: string): number {

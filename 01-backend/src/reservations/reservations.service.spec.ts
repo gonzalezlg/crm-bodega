@@ -1858,4 +1858,329 @@ describe('ReservationsService', () => {
     );
     assert.equal(prisma.$transaction.calls.length, 1);
   });
+
+  it('edita unicamente las notas sin consultar disponibilidad', async () => {
+    const { service, tx, availabilityService } = createService();
+    const updatedReservation = {
+      ...baseReservation,
+      notes: 'Nueva observacion',
+    };
+    tx.reservation.update.mockResolvedValue(updatedReservation);
+
+    const result = await service.update('reservation-id', {
+      notes: 'Nueva observacion',
+    });
+
+    assert.deepEqual(result, updatedReservation);
+    assert.deepEqual(tx.reservation.update.calls[0][0], {
+      where: {
+        id: 'reservation-id',
+      },
+      data: {
+        notes: 'Nueva observacion',
+      },
+    });
+    assert.equal(availabilityService.getAvailability.calls.length, 0);
+    assert.equal(tx.reservation.aggregate.calls.length, 0);
+  });
+
+  it('edita la fecha de una reserva', async () => {
+    const { service, tx, availabilityService } = createService();
+
+    await service.update('reservation-id', {
+      date: '2026-08-03',
+    });
+
+    assert.deepEqual(availabilityService.getAvailability.calls[0], [
+      baseDto.experienceId,
+      '2026-08-03',
+      tx,
+    ]);
+    assert.deepEqual(tx.reservation.update.calls[0][0], {
+      where: {
+        id: 'reservation-id',
+      },
+      data: {
+        date: new Date('2026-08-03T00:00:00.000Z'),
+      },
+    });
+  });
+
+  it('edita el horario de una reserva', async () => {
+    const { service, tx, availabilityService } = createService();
+    availabilityService.getAvailability.mockResolvedValue({
+      experienceId: baseDto.experienceId,
+      date: baseDto.date,
+      slots: [
+        {
+          startTime: '11:00',
+          capacity: 10,
+          available: 10,
+        },
+      ],
+    });
+
+    await service.update('reservation-id', {
+      startTime: '11:00',
+    });
+
+    assert.deepEqual(tx.reservation.update.calls[0][0], {
+      where: {
+        id: 'reservation-id',
+      },
+      data: {
+        startTime: '11:00',
+      },
+    });
+  });
+
+  it('edita la cantidad de personas de una reserva', async () => {
+    const { service, tx } = createService();
+
+    await service.update('reservation-id', {
+      peopleCount: 6,
+    });
+
+    assert.deepEqual(tx.reservation.update.calls[0][0], {
+      where: {
+        id: 'reservation-id',
+      },
+      data: {
+        peopleCount: 6,
+      },
+    });
+  });
+
+  it('edita la experiencia de una reserva', async () => {
+    const { service, tx, availabilityService } = createService();
+    const newExperienceId = '9f8e7d6c-5b4a-4312-9876-abcdefabcdef';
+    availabilityService.getAvailability.mockResolvedValue({
+      experienceId: newExperienceId,
+      date: baseDto.date,
+      slots: [
+        {
+          startTime: baseDto.startTime,
+          capacity: 10,
+          available: 10,
+        },
+      ],
+    });
+
+    await service.update('reservation-id', {
+      experienceId: newExperienceId,
+    });
+
+    assert.deepEqual(tx.experience.findUnique.calls[0][0], {
+      where: {
+        id: newExperienceId,
+      },
+      select: {
+        id: true,
+        active: true,
+      },
+    });
+    assert.deepEqual(tx.reservation.update.calls[0][0], {
+      where: {
+        id: 'reservation-id',
+      },
+      data: {
+        experienceId: newExperienceId,
+      },
+    });
+  });
+
+  it('devuelve 404 al editar una reserva inexistente', async () => {
+    const { service, tx } = createService();
+    tx.reservation.findUnique.mockResolvedValue(null);
+
+    await assert.rejects(
+      () => service.update('missing-reservation-id', { notes: 'Nueva nota' }),
+      NotFoundException,
+    );
+  });
+
+  it('devuelve 409 al editar una reserva CANCELLED', async () => {
+    const { service, tx } = createService();
+    tx.reservation.findUnique.mockResolvedValue({
+      ...baseReservation,
+      status: ReservationStatus.CANCELLED,
+    });
+
+    await assert.rejects(
+      () => service.update('reservation-id', { notes: 'Nueva nota' }),
+      ConflictException,
+    );
+  });
+
+  it('devuelve 409 al editar una reserva ATTENDED', async () => {
+    const { service, tx } = createService();
+    tx.reservation.findUnique.mockResolvedValue({
+      ...baseReservation,
+      status: ReservationStatus.ATTENDED,
+    });
+
+    await assert.rejects(
+      () => service.update('reservation-id', { notes: 'Nueva nota' }),
+      ConflictException,
+    );
+  });
+
+  it('devuelve 409 al editar una reserva NO_SHOW', async () => {
+    const { service, tx } = createService();
+    tx.reservation.findUnique.mockResolvedValue({
+      ...baseReservation,
+      status: ReservationStatus.NO_SHOW,
+    });
+
+    await assert.rejects(
+      () => service.update('reservation-id', { notes: 'Nueva nota' }),
+      ConflictException,
+    );
+  });
+
+  it('devuelve 404 al editar si la experiencia no existe', async () => {
+    const { service, tx } = createService();
+    tx.experience.findUnique.mockResolvedValue(null);
+
+    await assert.rejects(
+      () => service.update('reservation-id', { peopleCount: 6 }),
+      NotFoundException,
+    );
+  });
+
+  it('devuelve 400 al editar si la experiencia esta inactiva', async () => {
+    const { service, tx } = createService();
+    tx.experience.findUnique.mockResolvedValue({
+      id: baseDto.experienceId,
+      active: false,
+    });
+
+    await assert.rejects(
+      () => service.update('reservation-id', { peopleCount: 6 }),
+      BadRequestException,
+    );
+  });
+
+  it('devuelve 400 al editar si el horario no existe en la disponibilidad', async () => {
+    const { service, availabilityService } = createService();
+    availabilityService.getAvailability.mockResolvedValue({
+      experienceId: baseDto.experienceId,
+      date: baseDto.date,
+      slots: [],
+    });
+
+    await assert.rejects(
+      () => service.update('reservation-id', { peopleCount: 6 }),
+      BadRequestException,
+    );
+  });
+
+  it('devuelve 409 al editar si no hay capacidad suficiente', async () => {
+    const { service, tx } = createService();
+    tx.reservation.aggregate.mockResolvedValue({
+      _sum: {
+        peopleCount: 8,
+      },
+    });
+
+    await assert.rejects(
+      () => service.update('reservation-id', { peopleCount: 6 }),
+      ConflictException,
+    );
+  });
+
+  it('excluye la propia reserva al calcular ocupacion durante la edicion', async () => {
+    const { service, tx } = createService();
+
+    await service.update('reservation-id', {
+      peopleCount: 6,
+    });
+
+    assert.deepEqual(
+      (tx.reservation.aggregate.calls[0][0] as { where: unknown }).where,
+      {
+        id: {
+          not: 'reservation-id',
+        },
+        experienceId: baseDto.experienceId,
+        date: new Date(`${baseDto.date}T00:00:00.000Z`),
+        startTime: baseDto.startTime,
+        status: {
+          not: ReservationStatus.CANCELLED,
+        },
+      },
+    );
+  });
+
+  it('la edicion utiliza aislamiento Serializable', async () => {
+    const { service, prisma } = createService();
+
+    await service.update('reservation-id', {
+      notes: 'Nueva observacion',
+    });
+
+    assert.deepEqual(prisma.$transaction.calls[0][1], {
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+    });
+  });
+
+  it('reintenta la edicion cuando ocurre un error P2034', async () => {
+    const { service, prisma, tx } = createService();
+    let attempts = 0;
+    prisma.$transaction = Object.assign(
+      async (
+        callback: (transactionClient: TransactionMock) => Promise<unknown>,
+        options: unknown,
+      ) => {
+        prisma.$transaction.calls.push([callback, options]);
+        attempts += 1;
+
+        if (attempts === 1) {
+          throw createPrismaKnownError('P2034');
+        }
+
+        return callback(tx);
+      },
+      prisma.$transaction,
+    );
+
+    await service.update('reservation-id', {
+      notes: 'Nueva observacion',
+    });
+
+    assert.equal(prisma.$transaction.calls.length, 2);
+  });
+
+  it('la edicion tiene un maximo de 3 intentos ante P2034', async () => {
+    const { service, prisma } = createService();
+    prisma.$transaction = Object.assign(
+      async (_callback: unknown, options: unknown) => {
+        prisma.$transaction.calls.push([_callback, options]);
+        throw createPrismaKnownError('P2034');
+      },
+      prisma.$transaction,
+    );
+
+    await assert.rejects(
+      () => service.update('reservation-id', { notes: 'Nueva observacion' }),
+      ConflictException,
+    );
+    assert.equal(prisma.$transaction.calls.length, 3);
+  });
+
+  it('no actualiza la reserva cuando falla una validacion de edicion', async () => {
+    const { service, tx, availabilityService } = createService();
+    availabilityService.getAvailability.mockResolvedValue({
+      experienceId: baseDto.experienceId,
+      date: baseDto.date,
+      slots: [],
+    });
+
+    await assert.rejects(
+      () => service.update('reservation-id', { peopleCount: 6 }),
+      BadRequestException,
+    );
+
+    assert.equal(tx.reservation.update.calls.length, 0);
+  });
 });
