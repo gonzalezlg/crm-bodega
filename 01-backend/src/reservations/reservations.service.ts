@@ -86,6 +86,55 @@ export class ReservationsService {
     );
   }
 
+  async confirm(id: string) {
+    for (let attempt = 1; attempt <= this.maxTransactionAttempts; attempt++) {
+      try {
+        return await this.prisma.$transaction(
+          (tx) => this.confirmInsideTransaction(id, tx),
+          {
+            isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+          },
+        );
+      } catch (error) {
+        if (!this.isPrismaTransactionConflict(error)) {
+          throw error;
+        }
+
+        if (attempt === this.maxTransactionAttempts) {
+          throw new ConflictException(
+            'No fue posible confirmar la reserva debido a un conflicto de concurrencia. Intente nuevamente.',
+          );
+        }
+      }
+    }
+
+    throw new ConflictException(
+      'No fue posible confirmar la reserva debido a un conflicto de concurrencia. Intente nuevamente.',
+    );
+  }
+
+  private async confirmInsideTransaction(
+    id: string,
+    tx: Prisma.TransactionClient,
+  ) {
+    const reservation = await tx.reservation.findUnique({
+      where: { id },
+    });
+
+    if (!reservation) {
+      throw new NotFoundException('Reserva no encontrada.');
+    }
+
+    this.validateReservationCanBeConfirmed(reservation.status);
+
+    return tx.reservation.update({
+      where: { id },
+      data: {
+        status: ReservationStatus.CONFIRMED,
+      },
+    });
+  }
+
   private async cancelInsideTransaction(
     id: string,
     tx: Prisma.TransactionClient,
@@ -328,6 +377,27 @@ export class ReservationsService {
     ) {
       throw new ConflictException(
         'No se puede cancelar una reserva cuyo horario ya comenzó.',
+      );
+    }
+  }
+
+  private validateReservationCanBeConfirmed(status: ReservationStatus): void {
+    if (status === ReservationStatus.CONFIRMED) {
+      throw new ConflictException('La reserva ya se encuentra confirmada.');
+    }
+
+    if (status === ReservationStatus.CANCELLED) {
+      throw new ConflictException(
+        'La reserva no puede confirmarse porque fue cancelada.',
+      );
+    }
+
+    if (
+      status === ReservationStatus.ATTENDED ||
+      status === ReservationStatus.NO_SHOW
+    ) {
+      throw new ConflictException(
+        'La reserva no puede confirmarse en su estado actual.',
       );
     }
   }

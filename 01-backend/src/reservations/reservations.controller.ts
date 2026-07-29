@@ -34,4 +34,10 @@ export class ReservationsController {
   cancel(@Param('id', ParseUUIDPipe) id: string) {
     return this.reservationsService.cancel(id);
   }
+
+  @Patch(':id/confirm')
+  @Roles('OWNER')
+  confirm(@Param('id', ParseUUIDPipe) id: string) {
+    return this.reservationsService.confirm(id);
+  }
 }
