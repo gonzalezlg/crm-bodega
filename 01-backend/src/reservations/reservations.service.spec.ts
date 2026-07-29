@@ -15,12 +15,15 @@ type TransactionMock = {
     findUnique: MockFunction;
   };
   reservation: {
+    findUnique: MockFunction;
     aggregate: MockFunction;
     create: MockFunction;
+    update: MockFunction;
   };
 };
 
 type PrismaMock = {
+  reservation: TransactionMock['reservation'];
   tx: TransactionMock;
   $transaction: MockFunction;
 };
@@ -38,6 +41,18 @@ const baseDto = {
 };
 
 const fixedNow = new Date('2026-08-01T18:00:00.000Z');
+
+const baseReservation = {
+  id: 'reservation-id',
+  experienceId: baseDto.experienceId,
+  date: new Date(`${baseDto.date}T00:00:00.000Z`),
+  startTime: baseDto.startTime,
+  peopleCount: baseDto.peopleCount,
+  status: ReservationStatus.PENDING,
+  notes: baseDto.notes,
+  createdAt: new Date('2026-08-01T18:01:00.000Z'),
+  updatedAt: new Date('2026-08-01T18:01:00.000Z'),
+};
 
 function mockFunction() {
   const calls: unknown[][] = [];
@@ -87,8 +102,10 @@ function createTransactionMock(): TransactionMock {
       findUnique: mockFunction(),
     },
     reservation: {
+      findUnique: mockFunction(),
       aggregate: mockFunction(),
       create: mockFunction(),
+      update: mockFunction(),
     },
   };
 
@@ -101,13 +118,12 @@ function createTransactionMock(): TransactionMock {
       peopleCount: 0,
     },
   });
-  tx.reservation.create.mockResolvedValue({
-    id: 'reservation-id',
-    ...baseDto,
-    date: new Date(`${baseDto.date}T00:00:00.000Z`),
-    status: ReservationStatus.PENDING,
-    createdAt: new Date('2026-08-01T18:01:00.000Z'),
-    updatedAt: new Date('2026-08-01T18:01:00.000Z'),
+  tx.reservation.findUnique.mockResolvedValue(baseReservation);
+  tx.reservation.create.mockResolvedValue(baseReservation);
+  tx.reservation.update.mockResolvedValue({
+    ...baseReservation,
+    status: ReservationStatus.CANCELLED,
+    updatedAt: new Date('2026-08-01T18:02:00.000Z'),
   });
 
   return tx;
@@ -116,6 +132,12 @@ function createTransactionMock(): TransactionMock {
 function createService() {
   const tx = createTransactionMock();
   const prisma = {
+    reservation: {
+      findUnique: mockFunction(),
+      aggregate: mockFunction(),
+      create: mockFunction(),
+      update: mockFunction(),
+    },
     tx,
     $transaction: mockFunction(),
   };
@@ -467,5 +489,256 @@ describe('ReservationsService', () => {
       BadRequestException,
     );
     assert.equal(tx.reservation.create.calls.length, 0);
+  });
+
+  it('cancela una reserva PENDING', async () => {
+    const { service, tx } = createService();
+
+    await service.cancel('reservation-id');
+
+    assert.deepEqual(tx.reservation.update.calls[0][0], {
+      where: {
+        id: 'reservation-id',
+      },
+      data: {
+        status: ReservationStatus.CANCELLED,
+      },
+    });
+  });
+
+  it('la cancelacion utiliza prisma.$transaction', async () => {
+    const { service, prisma } = createService();
+
+    await service.cancel('reservation-id');
+
+    assert.equal(prisma.$transaction.calls.length, 1);
+  });
+
+  it('la cancelacion utiliza aislamiento Serializable', async () => {
+    const { service, prisma } = createService();
+
+    await service.cancel('reservation-id');
+
+    assert.deepEqual(prisma.$transaction.calls[0][1], {
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+    });
+  });
+
+  it('findUnique se ejecuta con tx.reservation al cancelar', async () => {
+    const { service, tx } = createService();
+
+    await service.cancel('reservation-id');
+
+    assert.deepEqual(tx.reservation.findUnique.calls[0][0], {
+      where: {
+        id: 'reservation-id',
+      },
+    });
+  });
+
+  it('update se ejecuta con tx.reservation al cancelar', async () => {
+    const { service, tx } = createService();
+
+    await service.cancel('reservation-id');
+
+    assert.deepEqual(tx.reservation.update.calls[0][0], {
+      where: {
+        id: 'reservation-id',
+      },
+      data: {
+        status: ReservationStatus.CANCELLED,
+      },
+    });
+  });
+
+  it('no utiliza prisma.reservation directamente durante la cancelacion', async () => {
+    const { service, prisma } = createService();
+
+    await service.cancel('reservation-id');
+
+    assert.equal(prisma.reservation.findUnique.calls.length, 0);
+    assert.equal(prisma.reservation.update.calls.length, 0);
+  });
+
+  it('cancela una reserva CONFIRMED', async () => {
+    const { service, tx } = createService();
+    tx.reservation.findUnique.mockResolvedValue({
+      ...baseReservation,
+      status: ReservationStatus.CONFIRMED,
+    });
+
+    const result = await service.cancel('reservation-id');
+
+    assert.equal(result.status, ReservationStatus.CANCELLED);
+  });
+
+  it('devuelve 404 si la reserva no existe', async () => {
+    const { service, tx } = createService();
+    tx.reservation.findUnique.mockResolvedValue(null);
+
+    await assert.rejects(
+      () => service.cancel('missing-reservation-id'),
+      NotFoundException,
+    );
+  });
+
+  it('devuelve 409 si la reserva ya estaba CANCELLED', async () => {
+    const { service, tx } = createService();
+    tx.reservation.findUnique.mockResolvedValue({
+      ...baseReservation,
+      status: ReservationStatus.CANCELLED,
+    });
+
+    await assert.rejects(() => service.cancel('reservation-id'), ConflictException);
+  });
+
+  it('devuelve 409 si la reserva esta ATTENDED', async () => {
+    const { service, tx } = createService();
+    tx.reservation.findUnique.mockResolvedValue({
+      ...baseReservation,
+      status: ReservationStatus.ATTENDED,
+    });
+
+    await assert.rejects(() => service.cancel('reservation-id'), ConflictException);
+  });
+
+  it('devuelve 409 si la reserva esta NO_SHOW', async () => {
+    const { service, tx } = createService();
+    tx.reservation.findUnique.mockResolvedValue({
+      ...baseReservation,
+      status: ReservationStatus.NO_SHOW,
+    });
+
+    await assert.rejects(() => service.cancel('reservation-id'), ConflictException);
+  });
+
+  it('devuelve 409 si el horario ya comenzo', async () => {
+    const { service, tx } = createService();
+    tx.reservation.findUnique.mockResolvedValue({
+      ...baseReservation,
+      date: new Date('2026-08-01T00:00:00.000Z'),
+      startTime: '15:00',
+      status: ReservationStatus.PENDING,
+    });
+
+    await assert.rejects(() => service.cancel('reservation-id'), ConflictException);
+  });
+
+  it('cambia unicamente el status', async () => {
+    const { service, tx } = createService();
+
+    await service.cancel('reservation-id');
+
+    assert.deepEqual(
+      (tx.reservation.update.calls[0][0] as { data: unknown }).data,
+      {
+        status: ReservationStatus.CANCELLED,
+      },
+    );
+  });
+
+  it('devuelve la reserva actualizada', async () => {
+    const { service } = createService();
+
+    const result = await service.cancel('reservation-id');
+
+    assert.deepEqual(result, {
+      ...baseReservation,
+      status: ReservationStatus.CANCELLED,
+      updatedAt: new Date('2026-08-01T18:02:00.000Z'),
+    });
+  });
+
+  it('reintenta la cancelacion cuando ocurre un error P2034', async () => {
+    const { service, prisma, tx } = createService();
+    let attempts = 0;
+    prisma.$transaction = Object.assign(
+      async (
+        callback: (transactionClient: TransactionMock) => Promise<unknown>,
+        options: unknown,
+      ) => {
+        prisma.$transaction.calls.push([callback, options]);
+        attempts += 1;
+
+        if (attempts === 1) {
+          throw createPrismaKnownError('P2034');
+        }
+
+        return callback(tx);
+      },
+      prisma.$transaction,
+    );
+
+    await service.cancel('reservation-id');
+
+    assert.equal(prisma.$transaction.calls.length, 2);
+  });
+
+  it('la cancelacion tiene un maximo de 3 intentos ante P2034', async () => {
+    const { service, prisma } = createService();
+    prisma.$transaction = Object.assign(
+      async (_callback: unknown, options: unknown) => {
+        prisma.$transaction.calls.push([_callback, options]);
+        throw createPrismaKnownError('P2034');
+      },
+      prisma.$transaction,
+    );
+
+    await assert.rejects(() => service.cancel('reservation-id'), ConflictException);
+    assert.equal(prisma.$transaction.calls.length, 3);
+  });
+
+  it('despues de 3 errores P2034 devuelve ConflictException con mensaje de concurrencia', async () => {
+    const { service, prisma } = createService();
+    prisma.$transaction = Object.assign(
+      async (_callback: unknown, options: unknown) => {
+        prisma.$transaction.calls.push([_callback, options]);
+        throw createPrismaKnownError('P2034');
+      },
+      prisma.$transaction,
+    );
+
+    await assert.rejects(
+      () => service.cancel('reservation-id'),
+      (error: unknown) => {
+        assert.ok(error instanceof ConflictException);
+        assert.equal(
+          error.message,
+          'No fue posible cancelar la reserva debido a un conflicto de concurrencia. Intente nuevamente.',
+        );
+        return true;
+      },
+    );
+  });
+
+  it('la cancelacion no reintenta errores diferentes de P2034', async () => {
+    const { service, prisma } = createService();
+    prisma.$transaction = Object.assign(
+      async (_callback: unknown, options: unknown) => {
+        prisma.$transaction.calls.push([_callback, options]);
+        throw createPrismaKnownError('P2002');
+      },
+      prisma.$transaction,
+    );
+
+    await assert.rejects(
+      () => service.cancel('reservation-id'),
+      Prisma.PrismaClientKnownRequestError,
+    );
+    assert.equal(prisma.$transaction.calls.length, 1);
+  });
+
+  it('una reserva CANCELLED queda excluida de ocupacion por la logica existente', async () => {
+    const { service, tx } = createService();
+
+    await service.create(baseDto);
+
+    const where = (
+      tx.reservation.aggregate.calls[0][0] as {
+        where: { status: { not: ReservationStatus } };
+      }
+    ).where;
+
+    assert.equal(where.status.not, ReservationStatus.CANCELLED);
   });
 });

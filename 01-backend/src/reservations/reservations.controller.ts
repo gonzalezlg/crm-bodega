@@ -1,6 +1,9 @@
 import {
   Body,
   Controller,
+  Param,
+  ParseUUIDPipe,
+  Patch,
   Post,
   UsePipes,
   ValidationPipe,
@@ -24,5 +27,11 @@ export class ReservationsController {
   @Roles('OWNER')
   create(@Body() createReservationDto: CreateReservationDto) {
     return this.reservationsService.create(createReservationDto);
+  }
+
+  @Patch(':id/cancel')
+  @Roles('OWNER')
+  cancel(@Param('id', ParseUUIDPipe) id: string) {
+    return this.reservationsService.cancel(id);
   }
 }
