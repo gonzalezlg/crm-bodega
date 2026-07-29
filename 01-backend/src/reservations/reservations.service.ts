@@ -8,6 +8,7 @@ import { Prisma, ReservationStatus } from '@prisma/client';
 import { AvailabilityService } from '../availability/availability.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateReservationDto } from './dto/create-reservation.dto';
+import { ListReservationsDto } from './dto/list-reservations.dto';
 
 type BusinessDateTime = {
   date: string;
@@ -20,6 +21,17 @@ type ReservationConfig = {
   minReservationNoticeMinutes: number;
 };
 
+type ReservationWithExperience = Prisma.ReservationGetPayload<{
+  include: {
+    experience: {
+      select: {
+        id: true;
+        name: true;
+      };
+    };
+  };
+}>;
+
 @Injectable()
 export class ReservationsService {
   private readonly maxTransactionAttempts = 3;
@@ -28,6 +40,35 @@ export class ReservationsService {
     private readonly prisma: PrismaService,
     private readonly availabilityService: AvailabilityService,
   ) {}
+
+  findAll(
+    query: ListReservationsDto,
+  ): Promise<ReservationWithExperience[]> {
+    const where = this.buildFilters(query);
+
+    return this.prisma.reservation.findMany({
+      where,
+      include: {
+        experience: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: [
+        {
+          date: 'asc',
+        },
+        {
+          startTime: 'asc',
+        },
+        {
+          createdAt: 'asc',
+        },
+      ],
+    });
+  }
 
   async create(createReservationDto: CreateReservationDto) {
     const config = this.getReservationConfig();
@@ -341,6 +382,26 @@ export class ReservationsService {
     });
 
     return result._sum.peopleCount ?? 0;
+  }
+
+  private buildFilters(
+    query: ListReservationsDto,
+  ): Prisma.ReservationWhereInput {
+    const where: Prisma.ReservationWhereInput = {};
+
+    if (query.date) {
+      where.date = this.toPrismaDate(query.date);
+    }
+
+    if (query.status) {
+      where.status = query.status;
+    }
+
+    if (query.experienceId) {
+      where.experienceId = query.experienceId;
+    }
+
+    return where;
   }
 
   private validateTemporalRules(

@@ -16,6 +16,7 @@ type TransactionMock = {
   };
   reservation: {
     findUnique: MockFunction;
+    findMany: MockFunction;
     aggregate: MockFunction;
     create: MockFunction;
     update: MockFunction;
@@ -103,6 +104,7 @@ function createTransactionMock(): TransactionMock {
     },
     reservation: {
       findUnique: mockFunction(),
+      findMany: mockFunction(),
       aggregate: mockFunction(),
       create: mockFunction(),
       update: mockFunction(),
@@ -119,6 +121,7 @@ function createTransactionMock(): TransactionMock {
     },
   });
   tx.reservation.findUnique.mockResolvedValue(baseReservation);
+  tx.reservation.findMany.mockResolvedValue([]);
   tx.reservation.create.mockResolvedValue(baseReservation);
   tx.reservation.update.mockResolvedValue({
     ...baseReservation,
@@ -134,6 +137,7 @@ function createService() {
   const prisma = {
     reservation: {
       findUnique: mockFunction(),
+      findMany: mockFunction(),
       aggregate: mockFunction(),
       create: mockFunction(),
       update: mockFunction(),
@@ -184,6 +188,65 @@ function createService() {
 }
 
 describe('ReservationsService', () => {
+  it('lista reservas sin filtros', async () => {
+    const { service, prisma } = createService();
+    prisma.reservation.findMany.mockResolvedValue([baseReservation]);
+
+    const result = await service.findAll({});
+
+    assert.deepEqual(result, [baseReservation]);
+    assert.deepEqual(prisma.reservation.findMany.calls[0][0], {
+      where: {},
+      include: {
+        experience: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: [
+        {
+          date: 'asc',
+        },
+        {
+          startTime: 'asc',
+        },
+        {
+          createdAt: 'asc',
+        },
+      ],
+    });
+  });
+
+  it('lista reservas aplicando filtros opcionales', async () => {
+    const { service, prisma } = createService();
+
+    await service.findAll({
+      date: baseDto.date,
+      status: ReservationStatus.CONFIRMED,
+      experienceId: baseDto.experienceId,
+    });
+
+    assert.deepEqual(
+      (prisma.reservation.findMany.calls[0][0] as { where: unknown }).where,
+      {
+        date: new Date(`${baseDto.date}T00:00:00.000Z`),
+        status: ReservationStatus.CONFIRMED,
+        experienceId: baseDto.experienceId,
+      },
+    );
+  });
+
+  it('devuelve array vacio cuando no existen reservas', async () => {
+    const { service, prisma } = createService();
+    prisma.reservation.findMany.mockResolvedValue([]);
+
+    const result = await service.findAll({});
+
+    assert.deepEqual(result, []);
+  });
+
   it('crea una reserva valida', async () => {
     const { service } = createService();
 

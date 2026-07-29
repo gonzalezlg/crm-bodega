@@ -1,15 +1,18 @@
 import {
   Body,
   Controller,
+  Get,
   Param,
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CreateReservationDto } from './dto/create-reservation.dto';
+import { ListReservationsDto } from './dto/list-reservations.dto';
 import { ReservationsService } from './reservations.service';
 
 @Controller('reservations')
@@ -22,6 +25,12 @@ import { ReservationsService } from './reservations.service';
 )
 export class ReservationsController {
   constructor(private readonly reservationsService: ReservationsService) {}
+
+  @Get()
+  @Roles('OWNER')
+  findAll(@Query() query: ListReservationsDto) {
+    return this.reservationsService.findAll(query);
+  }
 
   @Post()
   @Roles('OWNER')
