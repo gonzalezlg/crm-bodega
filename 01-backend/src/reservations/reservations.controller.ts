@@ -46,4 +46,10 @@ export class ReservationsController {
   attend(@Param('id', ParseUUIDPipe) id: string) {
     return this.reservationsService.attend(id);
   }
+
+  @Patch(':id/no-show')
+  @Roles('OWNER')
+  noShow(@Param('id', ParseUUIDPipe) id: string) {
+    return this.reservationsService.noShow(id);
+  }
 }

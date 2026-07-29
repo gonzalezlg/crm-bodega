@@ -140,6 +140,55 @@ export class ReservationsService {
     );
   }
 
+  async noShow(id: string) {
+    for (let attempt = 1; attempt <= this.maxTransactionAttempts; attempt++) {
+      try {
+        return await this.prisma.$transaction(
+          (tx) => this.noShowInsideTransaction(id, tx),
+          {
+            isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+          },
+        );
+      } catch (error) {
+        if (!this.isPrismaTransactionConflict(error)) {
+          throw error;
+        }
+
+        if (attempt === this.maxTransactionAttempts) {
+          throw new ConflictException(
+            'No fue posible registrar la ausencia debido a un conflicto de concurrencia. Intente nuevamente.',
+          );
+        }
+      }
+    }
+
+    throw new ConflictException(
+      'No fue posible registrar la ausencia debido a un conflicto de concurrencia. Intente nuevamente.',
+    );
+  }
+
+  private async noShowInsideTransaction(
+    id: string,
+    tx: Prisma.TransactionClient,
+  ) {
+    const reservation = await tx.reservation.findUnique({
+      where: { id },
+    });
+
+    if (!reservation) {
+      throw new NotFoundException('Reserva no encontrada.');
+    }
+
+    this.validateReservationCanBeMarkedAsNoShow(reservation);
+
+    return tx.reservation.update({
+      where: { id },
+      data: {
+        status: ReservationStatus.NO_SHOW,
+      },
+    });
+  }
+
   private async attendInsideTransaction(
     id: string,
     tx: Prisma.TransactionClient,
@@ -494,6 +543,51 @@ export class ReservationsService {
     ) {
       throw new ConflictException(
         'No se puede registrar la asistencia antes del horario de la reserva.',
+      );
+    }
+  }
+
+  private validateReservationCanBeMarkedAsNoShow(reservation: {
+    date: Date;
+    startTime: string;
+    status: ReservationStatus;
+  }): void {
+    if (reservation.status === ReservationStatus.PENDING) {
+      throw new ConflictException(
+        'La reserva debe estar confirmada antes de registrar la ausencia.',
+      );
+    }
+
+    if (reservation.status === ReservationStatus.ATTENDED) {
+      throw new ConflictException('La reserva ya fue marcada como asistida.');
+    }
+
+    if (reservation.status === ReservationStatus.CANCELLED) {
+      throw new ConflictException(
+        'No se puede registrar ausencia en una reserva cancelada.',
+      );
+    }
+
+    if (reservation.status === ReservationStatus.NO_SHOW) {
+      throw new ConflictException('La reserva ya fue marcada como ausente.');
+    }
+
+    const config = this.getReservationConfig();
+    const currentBusinessDateTime = this.getCurrentBusinessDateTime(
+      config.businessTimeZone,
+    );
+    const reservationDate = this.formatPrismaDate(reservation.date);
+    const reservationDay = this.getDayIndex(reservationDate);
+    const currentDay = this.getDayIndex(currentBusinessDateTime.date);
+
+    if (
+      reservationDay > currentDay ||
+      (reservationDay === currentDay &&
+        this.parseStartTime(reservation.startTime) >=
+          currentBusinessDateTime.minutes)
+    ) {
+      throw new ConflictException(
+        'No se puede registrar la ausencia antes de que haya comenzado la reserva.',
       );
     }
   }
