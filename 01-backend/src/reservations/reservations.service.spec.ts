@@ -248,6 +248,137 @@ describe('ReservationsService', () => {
     assert.deepEqual(result, []);
   });
 
+  it('lista proximas reservas restantes del dia por defecto', async () => {
+    const { service, prisma } = createService();
+    (service as unknown as { getCurrentDate: () => Date }).getCurrentDate =
+      () => new Date('2026-07-30T17:20:00.000Z');
+
+    await service.findUpcoming({
+      limit: 20,
+      includeFuture: false,
+    });
+
+    assert.deepEqual(prisma.reservation.findMany.calls[0][0], {
+      where: {
+        date: new Date('2026-07-30T00:00:00.000Z'),
+        startTime: {
+          gte: '14:20',
+        },
+        status: {
+          in: [ReservationStatus.PENDING, ReservationStatus.CONFIRMED],
+        },
+      },
+      include: {
+        experience: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: [
+        {
+          date: 'asc',
+        },
+        {
+          startTime: 'asc',
+        },
+        {
+          createdAt: 'asc',
+        },
+      ],
+      take: 20,
+    });
+  });
+
+  it('lista proximas reservas incluyendo fechas futuras', async () => {
+    const { service, prisma } = createService();
+    (service as unknown as { getCurrentDate: () => Date }).getCurrentDate =
+      () => new Date('2026-07-30T17:20:00.000Z');
+
+    await service.findUpcoming({
+      limit: 20,
+      includeFuture: true,
+    });
+
+    assert.deepEqual(
+      (prisma.reservation.findMany.calls[0][0] as { where: unknown }).where,
+      {
+        status: {
+          in: [ReservationStatus.PENDING, ReservationStatus.CONFIRMED],
+        },
+        OR: [
+          {
+            date: new Date('2026-07-30T00:00:00.000Z'),
+            startTime: {
+              gte: '14:20',
+            },
+          },
+          {
+            date: {
+              gt: new Date('2026-07-30T00:00:00.000Z'),
+            },
+          },
+        ],
+      },
+    );
+  });
+
+  it('lista proximas reservas con limite personalizado', async () => {
+    const { service, prisma } = createService();
+
+    await service.findUpcoming({
+      limit: 5,
+      includeFuture: false,
+    });
+
+    assert.equal(
+      (prisma.reservation.findMany.calls[0][0] as { take: number }).take,
+      5,
+    );
+  });
+
+  it('devuelve las proximas reservas obtenidas desde Prisma', async () => {
+    const { service, prisma } = createService();
+    const upcomingReservations = [
+      {
+        ...baseReservation,
+        experience: {
+          id: baseDto.experienceId,
+          name: 'Degustacion',
+        },
+      },
+    ];
+    prisma.reservation.findMany.mockResolvedValue(upcomingReservations);
+
+    const result = await service.findUpcoming({
+      limit: 20,
+      includeFuture: false,
+    });
+
+    assert.deepEqual(result, upcomingReservations);
+  });
+
+  it('formatea la hora actual con ceros al listar proximas reservas', async () => {
+    const { service, prisma } = createService();
+    (service as unknown as { getCurrentDate: () => Date }).getCurrentDate =
+      () => new Date('2026-07-30T11:05:00.000Z');
+
+    await service.findUpcoming({
+      limit: 20,
+      includeFuture: false,
+    });
+
+    assert.deepEqual(
+      (prisma.reservation.findMany.calls[0][0] as {
+        where: { startTime: unknown };
+      }).where.startTime,
+      {
+        gte: '08:05',
+      },
+    );
+  });
+
   it('devuelve una reserva por id cuando existe', async () => {
     const { service, prisma } = createService();
     const reservationWithExperience = {

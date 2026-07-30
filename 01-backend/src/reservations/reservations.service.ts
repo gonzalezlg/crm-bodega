@@ -9,6 +9,7 @@ import { AvailabilityService } from '../availability/availability.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateReservationDto } from './dto/create-reservation.dto';
 import { ListReservationsDto } from './dto/list-reservations.dto';
+import { UpcomingReservationsDto } from './dto/upcoming-reservations.dto';
 import { UpdateReservationDto } from './dto/update-reservation.dto';
 
 type BusinessDateTime = {
@@ -75,6 +76,70 @@ export class ReservationsService {
           createdAt: 'asc',
         },
       ],
+    });
+  }
+
+  findUpcoming(
+    query: UpcomingReservationsDto,
+  ): Promise<ReservationWithExperience[]> {
+    const config = this.getReservationConfig();
+    const currentBusinessDateTime = this.getCurrentBusinessDateTime(
+      config.businessTimeZone,
+    );
+    const todayDate = this.toPrismaDate(currentBusinessDateTime.date);
+    const currentTime = this.formatMinutesAsTime(
+      currentBusinessDateTime.minutes,
+    );
+    const statusFilter = {
+      in: [ReservationStatus.PENDING, ReservationStatus.CONFIRMED],
+    };
+    const where: Prisma.ReservationWhereInput = query.includeFuture
+      ? {
+          status: statusFilter,
+          OR: [
+            {
+              date: todayDate,
+              startTime: {
+                gte: currentTime,
+              },
+            },
+            {
+              date: {
+                gt: todayDate,
+              },
+            },
+          ],
+        }
+      : {
+          date: todayDate,
+          startTime: {
+            gte: currentTime,
+          },
+          status: statusFilter,
+        };
+
+    return this.prisma.reservation.findMany({
+      where,
+      include: {
+        experience: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: [
+        {
+          date: 'asc',
+        },
+        {
+          startTime: 'asc',
+        },
+        {
+          createdAt: 'asc',
+        },
+      ],
+      take: query.limit,
     });
   }
 
@@ -881,6 +946,15 @@ export class ReservationsService {
     const [hour, minute] = startTime.split(':').map(Number);
 
     return hour * 60 + minute;
+  }
+
+  private formatMinutesAsTime(minutes: number): string {
+    const hour = Math.floor(minutes / 60)
+      .toString()
+      .padStart(2, '0');
+    const minute = (minutes % 60).toString().padStart(2, '0');
+
+    return `${hour}:${minute}`;
   }
 
   private toPrismaDate(date: string): Date {
