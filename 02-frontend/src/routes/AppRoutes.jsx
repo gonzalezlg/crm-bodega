@@ -12,6 +12,7 @@ import ProductoEditarPage from '../pages/ProductoEditarPage';
 import ProductoNuevoPage from '../pages/ProductoNuevoPage';
 import ProductosPage from '../pages/ProductosPage';
 import ReservationCreatePage from '../pages/ReservationCreatePage';
+import ReservationDetailPage from '../pages/ReservationDetailPage';
 import ReservationEditPage from '../pages/ReservationEditPage';
 import ReservationsPage from '../pages/ReservationsPage';
 
@@ -29,6 +30,7 @@ function AppRoutes() {
             path="/reservas/:id/editar"
             element={<ReservationEditPage />}
           />
+          <Route path="/reservas/:id" element={<ReservationDetailPage />} />
           <Route path="/clientes" element={<ClientesPage />} />
           <Route path="/categorias" element={<CategoriasPage />} />
           <Route path="/experiences" element={<ExperiencesPage />} />

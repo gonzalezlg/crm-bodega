@@ -62,6 +62,7 @@ function ReservationsPage() {
       ) : (
         <ReservationsTable
           reservations={reservations}
+          onView={(reservation) => navigate(`/reservas/${reservation.id}`)}
           onEdit={(reservation) => navigate(`/reservas/${reservation.id}/editar`)}
         />
       )}

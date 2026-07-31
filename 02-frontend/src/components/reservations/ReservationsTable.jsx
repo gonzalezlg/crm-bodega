@@ -9,7 +9,11 @@ function getExperienceName(reservation) {
   return reservation.experience?.name ?? '-';
 }
 
-function ReservationsTable({ reservations = [], onEdit }) {
+function canEditReservation(reservation) {
+  return reservation.status === 'PENDING' || reservation.status === 'CONFIRMED';
+}
+
+function ReservationsTable({ reservations = [], onView, onEdit }) {
   return (
     <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm">
       <div className="overflow-x-auto">
@@ -53,13 +57,24 @@ function ReservationsTable({ reservations = [], onEdit }) {
                   <ReservationStatusBadge status={reservation.status} />
                 </td>
                 <td className="whitespace-nowrap px-4 py-4 text-sm">
-                  <Button
-                    variant="secondary"
-                    className="min-h-9 px-3 py-1.5"
-                    onClick={() => onEdit?.(reservation)}
-                  >
-                    Editar
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="secondary"
+                      className="min-h-9 px-3 py-1.5"
+                      onClick={() => onView?.(reservation)}
+                    >
+                      Ver
+                    </Button>
+                    {canEditReservation(reservation) && (
+                      <Button
+                        variant="secondary"
+                        className="min-h-9 px-3 py-1.5"
+                        onClick={() => onEdit?.(reservation)}
+                      >
+                        Editar
+                      </Button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
