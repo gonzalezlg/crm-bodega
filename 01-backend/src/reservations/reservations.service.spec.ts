@@ -17,7 +17,6 @@ type TransactionMock = {
   reservation: {
     findUnique: MockFunction;
     findMany: MockFunction;
-    aggregate: MockFunction;
     create: MockFunction;
     update: MockFunction;
   };
@@ -105,7 +104,6 @@ function createTransactionMock(): TransactionMock {
     reservation: {
       findUnique: mockFunction(),
       findMany: mockFunction(),
-      aggregate: mockFunction(),
       create: mockFunction(),
       update: mockFunction(),
     },
@@ -114,11 +112,6 @@ function createTransactionMock(): TransactionMock {
   tx.experience.findUnique.mockResolvedValue({
     id: baseDto.experienceId,
     active: true,
-  });
-  tx.reservation.aggregate.mockResolvedValue({
-    _sum: {
-      peopleCount: 0,
-    },
   });
   tx.reservation.findUnique.mockResolvedValue(baseReservation);
   tx.reservation.findMany.mockResolvedValue([]);
@@ -138,7 +131,6 @@ function createService() {
     reservation: {
       findUnique: mockFunction(),
       findMany: mockFunction(),
-      aggregate: mockFunction(),
       create: mockFunction(),
       update: mockFunction(),
     },
@@ -587,11 +579,17 @@ describe('ReservationsService', () => {
   });
 
   it('rechaza capacidad insuficiente', async () => {
-    const { service, tx } = createService();
-    tx.reservation.aggregate.mockResolvedValue({
-      _sum: {
-        peopleCount: 7,
-      },
+    const { service, availabilityService } = createService();
+    availabilityService.getAvailability.mockResolvedValue({
+      experienceId: baseDto.experienceId,
+      date: baseDto.date,
+      slots: [
+        {
+          startTime: baseDto.startTime,
+          capacity: 10,
+          available: 3,
+        },
+      ],
     });
 
     await assert.rejects(
@@ -604,44 +602,49 @@ describe('ReservationsService', () => {
     );
   });
 
-  it('excluye reservas CANCELLED del calculo', async () => {
-    const { service, tx } = createService();
+  it('delega en AvailabilityService el calculo que excluye reservas CANCELLED', async () => {
+    const { service, tx, availabilityService } = createService();
 
     await service.create(baseDto);
 
-    const where = (tx.reservation.aggregate.calls[0][0] as { where: unknown })
-      .where;
-
-    assert.deepEqual(where, {
-      experienceId: baseDto.experienceId,
-      date: new Date(`${baseDto.date}T00:00:00.000Z`),
-      startTime: baseDto.startTime,
-      status: {
-        not: ReservationStatus.CANCELLED,
-      },
-    });
+    assert.deepEqual(availabilityService.getAvailability.calls[0], [
+      baseDto.experienceId,
+      baseDto.date,
+      tx,
+    ]);
   });
 
-  it('incluye PENDING, CONFIRMED, ATTENDED y NO_SHOW en el calculo', async () => {
-    const { service, tx } = createService();
+  it('usa el available calculado por AvailabilityService para validar capacidad', async () => {
+    const { service, availabilityService } = createService();
+    availabilityService.getAvailability.mockResolvedValue({
+      experienceId: baseDto.experienceId,
+      date: baseDto.date,
+      slots: [
+        {
+          startTime: baseDto.startTime,
+          capacity: 10,
+          available: 4,
+        },
+      ],
+    });
 
-    await service.create(baseDto);
+    const result = await service.create(baseDto);
 
-    const where = (
-      tx.reservation.aggregate.calls[0][0] as {
-        where: { status: { not: ReservationStatus } };
-      }
-    ).where;
-
-    assert.equal(where.status.not, ReservationStatus.CANCELLED);
+    assert.equal(result.id, 'reservation-id');
   });
 
   it('crea varias reservas para el mismo horario si todavia existe capacidad', async () => {
-    const { service, tx } = createService();
-    tx.reservation.aggregate.mockResolvedValue({
-      _sum: {
-        peopleCount: 4,
-      },
+    const { service, availabilityService } = createService();
+    availabilityService.getAvailability.mockResolvedValue({
+      experienceId: baseDto.experienceId,
+      date: baseDto.date,
+      slots: [
+        {
+          startTime: baseDto.startTime,
+          capacity: 10,
+          available: 6,
+        },
+      ],
     });
 
     const result = await service.create({
@@ -977,18 +980,16 @@ describe('ReservationsService', () => {
     assert.equal(prisma.$transaction.calls.length, 1);
   });
 
-  it('una reserva CANCELLED queda excluida de ocupacion por la logica existente', async () => {
-    const { service, tx } = createService();
+  it('una reserva CANCELLED queda excluida de ocupacion por la logica centralizada de AvailabilityService', async () => {
+    const { service, tx, availabilityService } = createService();
 
     await service.create(baseDto);
 
-    const where = (
-      tx.reservation.aggregate.calls[0][0] as {
-        where: { status: { not: ReservationStatus } };
-      }
-    ).where;
-
-    assert.equal(where.status.not, ReservationStatus.CANCELLED);
+    assert.deepEqual(availabilityService.getAvailability.calls[0], [
+      baseDto.experienceId,
+      baseDto.date,
+      tx,
+    ]);
   });
 
   it('confirma una reserva PENDING', async () => {
@@ -2012,7 +2013,6 @@ describe('ReservationsService', () => {
       },
     });
     assert.equal(availabilityService.getAvailability.calls.length, 0);
-    assert.equal(tx.reservation.aggregate.calls.length, 0);
   });
 
   it('edita la fecha de una reserva', async () => {
@@ -2026,6 +2026,9 @@ describe('ReservationsService', () => {
       baseDto.experienceId,
       '2026-08-03',
       tx,
+      {
+        excludedReservationId: 'reservation-id',
+      },
     ]);
     assert.deepEqual(tx.reservation.update.calls[0][0], {
       where: {
@@ -2207,11 +2210,17 @@ describe('ReservationsService', () => {
   });
 
   it('devuelve 409 al editar si no hay capacidad suficiente', async () => {
-    const { service, tx } = createService();
-    tx.reservation.aggregate.mockResolvedValue({
-      _sum: {
-        peopleCount: 8,
-      },
+    const { service, availabilityService } = createService();
+    availabilityService.getAvailability.mockResolvedValue({
+      experienceId: baseDto.experienceId,
+      date: baseDto.date,
+      slots: [
+        {
+          startTime: baseDto.startTime,
+          capacity: 10,
+          available: 5,
+        },
+      ],
     });
 
     await assert.rejects(
@@ -2220,26 +2229,23 @@ describe('ReservationsService', () => {
     );
   });
 
-  it('excluye la propia reserva al calcular ocupacion durante la edicion', async () => {
-    const { service, tx } = createService();
+  it('solicita a AvailabilityService excluir la propia reserva durante la edicion', async () => {
+    const { service, tx, availabilityService } = createService();
 
     await service.update('reservation-id', {
       peopleCount: 6,
     });
 
     assert.deepEqual(
-      (tx.reservation.aggregate.calls[0][0] as { where: unknown }).where,
-      {
-        id: {
-          not: 'reservation-id',
+      availabilityService.getAvailability.calls[0],
+      [
+        baseDto.experienceId,
+        baseDto.date,
+        tx,
+        {
+          excludedReservationId: 'reservation-id',
         },
-        experienceId: baseDto.experienceId,
-        date: new Date(`${baseDto.date}T00:00:00.000Z`),
-        startTime: baseDto.startTime,
-        status: {
-          not: ReservationStatus.CANCELLED,
-        },
-      },
+      ],
     );
   });
 

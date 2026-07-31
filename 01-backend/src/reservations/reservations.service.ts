@@ -23,13 +23,6 @@ type ReservationConfig = {
   minReservationNoticeMinutes: number;
 };
 
-type ReservationAvailabilityData = {
-  experienceId: string;
-  date: string;
-  startTime: string;
-  peopleCount: number;
-};
-
 type ReservationWithExperience = Prisma.ReservationGetPayload<{
   include: {
     experience: {
@@ -346,7 +339,7 @@ export class ReservationsService {
     this.validateReservationCanBeEdited(reservation.status);
 
     const currentReservationDate = this.formatPrismaDate(reservation.date);
-    const resultingReservation: ReservationAvailabilityData = {
+    const resultingReservation: CreateReservationDto = {
       experienceId: updateReservationDto.experienceId ?? reservation.experienceId,
       date: updateReservationDto.date ?? currentReservationDate,
       startTime: updateReservationDto.startTime ?? reservation.startTime,
@@ -387,6 +380,9 @@ export class ReservationsService {
         resultingReservation.experienceId,
         resultingReservation.date,
         tx,
+        {
+          excludedReservationId: id,
+        },
       );
       const slot = availability.slots.find(
         (availableSlot) =>
@@ -399,16 +395,7 @@ export class ReservationsService {
         );
       }
 
-      const reservationDate = this.toPrismaDate(resultingReservation.date);
-      const occupiedPeople = await this.getOccupiedPeople(
-        resultingReservation,
-        reservationDate,
-        tx,
-        id,
-      );
-      const remainingCapacity = slot.capacity - occupiedPeople;
-
-      if (resultingReservation.peopleCount > remainingCapacity) {
+      if (resultingReservation.peopleCount > slot.available) {
         throw new ConflictException(
           'No hay disponibilidad suficiente para la cantidad de personas solicitada.',
         );
@@ -549,19 +536,13 @@ export class ReservationsService {
       );
     }
 
-    const reservationDate = this.toPrismaDate(createReservationDto.date);
-    const occupiedPeople = await this.getOccupiedPeople(
-      createReservationDto,
-      reservationDate,
-      tx,
-    );
-    const remainingCapacity = slot.capacity - occupiedPeople;
-
-    if (createReservationDto.peopleCount > remainingCapacity) {
+    if (createReservationDto.peopleCount > slot.available) {
       throw new ConflictException(
         'No hay disponibilidad suficiente para la cantidad de personas solicitada.',
       );
     }
+
+    const reservationDate = this.toPrismaDate(createReservationDto.date);
 
     return tx.reservation.create({
       data: {
@@ -573,37 +554,6 @@ export class ReservationsService {
         status: ReservationStatus.PENDING,
       },
     });
-  }
-
-  private async getOccupiedPeople(
-    reservationData: ReservationAvailabilityData,
-    reservationDate: Date,
-    tx: Prisma.TransactionClient,
-    excludedReservationId?: string,
-  ): Promise<number> {
-    const where: Prisma.ReservationWhereInput = {
-      experienceId: reservationData.experienceId,
-      date: reservationDate,
-      startTime: reservationData.startTime,
-      status: {
-        not: ReservationStatus.CANCELLED,
-      },
-    };
-
-    if (excludedReservationId) {
-      where.id = {
-        not: excludedReservationId,
-      };
-    }
-
-    const result = await tx.reservation.aggregate({
-      where,
-      _sum: {
-        peopleCount: true,
-      },
-    });
-
-    return result._sum.peopleCount ?? 0;
   }
 
   private buildUpdateData(

@@ -4,12 +4,21 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { AvailabilityExceptionType, Prisma, Weekday } from '@prisma/client';
+import {
+  AvailabilityExceptionType,
+  Prisma,
+  ReservationStatus,
+  Weekday,
+} from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AvailableSlotDto } from './dto/available-slot.dto';
 import { AvailabilityResultDto } from './dto/availability-result.dto';
 
 export type DatabaseClient = PrismaService | Prisma.TransactionClient;
+
+type AvailabilityOptions = {
+  excludedReservationId?: string;
+};
 
 type ParsedDate = {
   date: Date;
@@ -24,6 +33,7 @@ export class AvailabilityService {
     experienceId: string,
     date: string,
     databaseClient?: DatabaseClient,
+    options: AvailabilityOptions = {},
   ): Promise<AvailabilityResultDto> {
     const parsedDate = this.parseDate(date);
     const db = databaseClient ?? this.prisma;
@@ -96,6 +106,14 @@ export class AvailabilityService {
       }
     }
 
+    await this.applyReservationOccupancy(
+      experienceId,
+      parsedDate.date,
+      slotsByStartTime,
+      db,
+      options,
+    );
+
     const slots = Array.from(slotsByStartTime.values()).sort((a, b) =>
       a.startTime.localeCompare(b.startTime),
     );
@@ -120,6 +138,64 @@ export class AvailabilityService {
     }
 
     return experience;
+  }
+
+  private async applyReservationOccupancy(
+    experienceId: string,
+    date: Date,
+    slotsByStartTime: Map<string, AvailableSlotDto>,
+    db: DatabaseClient,
+    options: AvailabilityOptions,
+  ): Promise<void> {
+    const startTimes = Array.from(slotsByStartTime.keys());
+
+    if (startTimes.length === 0) {
+      return;
+    }
+
+    const where: Prisma.ReservationWhereInput = {
+      experienceId,
+      date,
+      startTime: {
+        in: startTimes,
+      },
+      status: {
+        not: ReservationStatus.CANCELLED,
+      },
+    };
+
+    if (options.excludedReservationId) {
+      where.id = {
+        not: options.excludedReservationId,
+      };
+    }
+
+    const reservations = await db.reservation.findMany({
+      where,
+      select: {
+        startTime: true,
+        peopleCount: true,
+      },
+    });
+
+    const occupiedPeopleByStartTime = new Map<string, number>();
+
+    for (const reservation of reservations) {
+      occupiedPeopleByStartTime.set(
+        reservation.startTime,
+        (occupiedPeopleByStartTime.get(reservation.startTime) ?? 0) +
+          reservation.peopleCount,
+      );
+    }
+
+    for (const [startTime, slot] of slotsByStartTime) {
+      const occupiedPeople = occupiedPeopleByStartTime.get(startTime) ?? 0;
+
+      slotsByStartTime.set(startTime, {
+        ...slot,
+        available: Math.max(0, slot.capacity - occupiedPeople),
+      });
+    }
   }
 
   private parseDate(date: string): ParsedDate {
