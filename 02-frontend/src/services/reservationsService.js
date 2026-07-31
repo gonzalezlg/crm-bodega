@@ -1,7 +1,23 @@
 import { request } from './apiClient';
 
-export function getReservations() {
-  return request('/reservations');
+export function getReservations(filters = {}) {
+  const params = new URLSearchParams();
+
+  if (filters.date) {
+    params.set('date', filters.date);
+  }
+
+  if (filters.experienceId) {
+    params.set('experienceId', filters.experienceId);
+  }
+
+  if (filters.status) {
+    params.set('status', filters.status);
+  }
+
+  const queryString = params.toString();
+
+  return request(`/reservations${queryString ? `?${queryString}` : ''}`);
 }
 
 export function getReservationById(id) {
