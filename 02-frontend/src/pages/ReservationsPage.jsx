@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import FeedbackMessages from '../components/common/FeedbackMessages';
 import ReservationsTable from '../components/reservations/ReservationsTable';
 import { PageContainer } from '../components/layout/PageContainer';
@@ -13,6 +14,7 @@ function getErrorMessages(error) {
 }
 
 function ReservationsPage() {
+  const navigate = useNavigate();
   const [reservations, setReservations] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [queryErrors, setQueryErrors] = useState([]);
@@ -41,7 +43,11 @@ function ReservationsPage() {
       <PageHeader
         title="Reservas"
         subtitle="Consulta las reservas registradas en la bodega."
-        actions={<Button>Nueva reserva</Button>}
+        actions={
+          <Button onClick={() => navigate('/reservas/nueva')}>
+            Nueva reserva
+          </Button>
+        }
       />
 
       <FeedbackMessages queryErrors={queryErrors} />
@@ -54,7 +60,10 @@ function ReservationsPage() {
           description="Cuando existan reservas registradas, aparecerán en este listado."
         />
       ) : (
-        <ReservationsTable reservations={reservations} />
+        <ReservationsTable
+          reservations={reservations}
+          onEdit={(reservation) => navigate(`/reservas/${reservation.id}/editar`)}
+        />
       )}
     </PageContainer>
   );

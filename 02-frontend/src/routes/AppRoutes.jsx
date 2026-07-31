@@ -11,6 +11,8 @@ import ProductoDetallePage from '../pages/ProductoDetallePage';
 import ProductoEditarPage from '../pages/ProductoEditarPage';
 import ProductoNuevoPage from '../pages/ProductoNuevoPage';
 import ProductosPage from '../pages/ProductosPage';
+import ReservationCreatePage from '../pages/ReservationCreatePage';
+import ReservationEditPage from '../pages/ReservationEditPage';
 import ReservationsPage from '../pages/ReservationsPage';
 
 function AppRoutes() {
@@ -22,6 +24,11 @@ function AppRoutes() {
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/reservas" element={<ReservationsPage />} />
+          <Route path="/reservas/nueva" element={<ReservationCreatePage />} />
+          <Route
+            path="/reservas/:id/editar"
+            element={<ReservationEditPage />}
+          />
           <Route path="/clientes" element={<ClientesPage />} />
           <Route path="/categorias" element={<CategoriasPage />} />
           <Route path="/experiences" element={<ExperiencesPage />} />

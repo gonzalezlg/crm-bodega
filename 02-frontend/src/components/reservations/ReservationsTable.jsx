@@ -1,4 +1,5 @@
 import ReservationStatusBadge from './ReservationStatusBadge';
+import { Button } from '../ui/Button';
 
 function formatDate(date) {
   return typeof date === 'string' ? date.slice(0, 10) : '-';
@@ -8,15 +9,21 @@ function getExperienceName(reservation) {
   return reservation.experience?.name ?? '-';
 }
 
-function ReservationsTable({ reservations = [] }) {
+function ReservationsTable({ reservations = [], onEdit }) {
   return (
     <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm">
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-zinc-200">
           <thead className="bg-zinc-50">
             <tr>
-              {['Fecha', 'Hora', 'Experiencia', 'Personas', 'Estado'].map(
-                (column) => (
+              {[
+                'Fecha',
+                'Hora',
+                'Experiencia',
+                'Personas',
+                'Estado',
+                'Acciones',
+              ].map((column) => (
                   <th
                     key={column}
                     scope="col"
@@ -24,8 +31,7 @@ function ReservationsTable({ reservations = [] }) {
                   >
                     {column}
                   </th>
-                ),
-              )}
+                ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100 bg-white">
@@ -45,6 +51,15 @@ function ReservationsTable({ reservations = [] }) {
                 </td>
                 <td className="whitespace-nowrap px-4 py-4 text-sm">
                   <ReservationStatusBadge status={reservation.status} />
+                </td>
+                <td className="whitespace-nowrap px-4 py-4 text-sm">
+                  <Button
+                    variant="secondary"
+                    className="min-h-9 px-3 py-1.5"
+                    onClick={() => onEdit?.(reservation)}
+                  >
+                    Editar
+                  </Button>
                 </td>
               </tr>
             ))}
