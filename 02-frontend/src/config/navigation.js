@@ -41,7 +41,7 @@ const navigationGroups = [
         label: 'Reservas',
         path: '/reservas',
         icon: CalendarDays,
-        enabled: false,
+        enabled: true,
       },
       {
         label: 'Ventas',

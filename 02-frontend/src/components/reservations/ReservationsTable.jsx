@@ -1,0 +1,58 @@
+import ReservationStatusBadge from './ReservationStatusBadge';
+
+function formatDate(date) {
+  return typeof date === 'string' ? date.slice(0, 10) : '-';
+}
+
+function getExperienceName(reservation) {
+  return reservation.experience?.name ?? '-';
+}
+
+function ReservationsTable({ reservations = [] }) {
+  return (
+    <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm">
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-zinc-200">
+          <thead className="bg-zinc-50">
+            <tr>
+              {['Fecha', 'Hora', 'Experiencia', 'Personas', 'Estado'].map(
+                (column) => (
+                  <th
+                    key={column}
+                    scope="col"
+                    className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500"
+                  >
+                    {column}
+                  </th>
+                ),
+              )}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-zinc-100 bg-white">
+            {reservations.map((reservation) => (
+              <tr key={reservation.id} className="hover:bg-zinc-50">
+                <td className="whitespace-nowrap px-4 py-4 text-sm font-medium text-zinc-950">
+                  {formatDate(reservation.date)}
+                </td>
+                <td className="whitespace-nowrap px-4 py-4 text-sm text-zinc-700">
+                  {reservation.startTime}
+                </td>
+                <td className="whitespace-nowrap px-4 py-4 text-sm text-zinc-700">
+                  {getExperienceName(reservation)}
+                </td>
+                <td className="whitespace-nowrap px-4 py-4 text-sm text-zinc-700">
+                  {reservation.peopleCount}
+                </td>
+                <td className="whitespace-nowrap px-4 py-4 text-sm">
+                  <ReservationStatusBadge status={reservation.status} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+export default ReservationsTable;
