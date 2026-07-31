@@ -1,4 +1,5 @@
 import ReservationStatusBadge from './ReservationStatusBadge';
+import ReservationQuickActions from './ReservationQuickActions';
 import { Button } from '../ui/Button';
 
 function formatDate(date) {
@@ -13,7 +14,13 @@ function canEditReservation(reservation) {
   return reservation.status === 'PENDING' || reservation.status === 'CONFIRMED';
 }
 
-function ReservationsTable({ reservations = [], onView, onEdit }) {
+function ReservationsTable({
+  reservations = [],
+  quickActionsDisabled = false,
+  onView,
+  onEdit,
+  onQuickAction,
+}) {
   return (
     <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm">
       <div className="overflow-x-auto">
@@ -74,6 +81,11 @@ function ReservationsTable({ reservations = [], onView, onEdit }) {
                         Editar
                       </Button>
                     )}
+                    <ReservationQuickActions
+                      reservation={reservation}
+                      disabled={quickActionsDisabled}
+                      onAction={onQuickAction}
+                    />
                   </div>
                 </td>
               </tr>

@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import ConfirmStatusDialog from '../components/common/ConfirmStatusDialog';
 import FeedbackMessages from '../components/common/FeedbackMessages';
 import ReservationsTable from '../components/reservations/ReservationsTable';
 import { PageContainer } from '../components/layout/PageContainer';
@@ -9,7 +10,48 @@ import { Button } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Loading } from '../components/ui/Loading';
 import { obtenerExperiences } from '../services/experiencesService';
-import { getReservations } from '../services/reservationsService';
+import {
+  attendReservation,
+  cancelReservation,
+  confirmReservation,
+  getReservations,
+  markReservationAsNoShow,
+} from '../services/reservationsService';
+
+const actionConfig = {
+  confirm: {
+    title: 'Confirmar reserva',
+    message: '¿Confirmás esta reserva?',
+    confirmLabel: 'Confirmar',
+    confirmVariant: 'success',
+    successMessage: 'Reserva confirmada correctamente.',
+    execute: confirmReservation,
+  },
+  cancel: {
+    title: 'Cancelar reserva',
+    message: '¿Querés cancelar esta reserva?',
+    confirmLabel: 'Cancelar reserva',
+    confirmVariant: 'danger',
+    successMessage: 'Reserva cancelada correctamente.',
+    execute: cancelReservation,
+  },
+  attend: {
+    title: 'Registrar asistencia',
+    message: '¿Querés marcar esta reserva como asistida?',
+    confirmLabel: 'Registrar asistencia',
+    confirmVariant: 'success',
+    successMessage: 'Asistencia registrada correctamente.',
+    execute: attendReservation,
+  },
+  noShow: {
+    title: 'Marcar ausencia',
+    message: '¿Querés marcar esta reserva como ausente?',
+    confirmLabel: 'Marcar ausencia',
+    confirmVariant: 'danger',
+    successMessage: 'Ausencia registrada correctamente.',
+    execute: markReservationAsNoShow,
+  },
+};
 
 function getErrorMessages(error) {
   return Array.isArray(error.messages) ? error.messages : [error.message];
@@ -26,8 +68,17 @@ function ReservationsPage() {
   const [experiences, setExperiences] = useState([]);
   const [experiencesLoading, setExperiencesLoading] = useState(false);
   const [hasAnyReservations, setHasAnyReservations] = useState(false);
+  const [statusErrors, setStatusErrors] = useState([]);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [selectedReservation, setSelectedReservation] = useState(null);
+  const [pendingAction, setPendingAction] = useState(null);
+  const [isActionLoading, setIsActionLoading] = useState(false);
 
   const hasActiveFilters = Boolean(date || experienceId || status);
+  const pendingActionConfig = useMemo(
+    () => (pendingAction ? actionConfig[pendingAction] : null),
+    [pendingAction],
+  );
 
   const loadReservations = useCallback(async () => {
     setIsLoading(true);
@@ -96,6 +147,46 @@ function ReservationsPage() {
     setStatus('');
   }
 
+  function handleQuickAction(action, reservation) {
+    setSelectedReservation(reservation);
+    setPendingAction(action);
+    setStatusErrors([]);
+    setSuccessMessage('');
+  }
+
+  async function handleConfirmAction() {
+    if (!pendingActionConfig || !selectedReservation || isActionLoading) {
+      return;
+    }
+
+    setIsActionLoading(true);
+    setStatusErrors([]);
+    setSuccessMessage('');
+
+    try {
+      await pendingActionConfig.execute(selectedReservation.id);
+      setPendingAction(null);
+      setSelectedReservation(null);
+      await loadReservations();
+      setSuccessMessage(pendingActionConfig.successMessage);
+    } catch (error) {
+      setPendingAction(null);
+      setSelectedReservation(null);
+      setStatusErrors(getErrorMessages(error));
+    } finally {
+      setIsActionLoading(false);
+    }
+  }
+
+  function handleCancelAction() {
+    if (isActionLoading) {
+      return;
+    }
+
+    setPendingAction(null);
+    setSelectedReservation(null);
+  }
+
   return (
     <PageContainer>
       <PageHeader
@@ -108,7 +199,11 @@ function ReservationsPage() {
         }
       />
 
-      <FeedbackMessages queryErrors={queryErrors} />
+      <FeedbackMessages
+        queryErrors={queryErrors}
+        statusErrors={statusErrors}
+        successMessage={successMessage}
+      />
 
       <PageToolbar>
         <div className="w-full md:w-48">
@@ -198,8 +293,22 @@ function ReservationsPage() {
       ) : (
         <ReservationsTable
           reservations={reservations}
+          quickActionsDisabled={isActionLoading}
           onView={(reservation) => navigate(`/reservas/${reservation.id}`)}
           onEdit={(reservation) => navigate(`/reservas/${reservation.id}/editar`)}
+          onQuickAction={handleQuickAction}
+        />
+      )}
+
+      {pendingActionConfig && (
+        <ConfirmStatusDialog
+          title={pendingActionConfig.title}
+          message={pendingActionConfig.message}
+          confirmLabel={pendingActionConfig.confirmLabel}
+          confirmVariant={pendingActionConfig.confirmVariant}
+          isLoading={isActionLoading}
+          onCancel={handleCancelAction}
+          onConfirm={handleConfirmAction}
         />
       )}
     </PageContainer>
