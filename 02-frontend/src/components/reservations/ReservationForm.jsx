@@ -81,6 +81,18 @@ function getStartTimePlaceholder({
   return 'Seleccionar horario';
 }
 
+function shouldPreserveOriginalReservationSlot({
+  currentValues,
+  initialValues,
+}) {
+  return (
+    Boolean(initialValues.startTime) &&
+    currentValues.experienceId === initialValues.experienceId &&
+    currentValues.date === initialValues.date &&
+    currentValues.startTime === initialValues.startTime
+  );
+}
+
 function ReservationForm({
   initialValues = defaultInitialValues,
   isSubmitting = false,
@@ -169,7 +181,12 @@ function ReservationForm({
     } else {
       setValues((currentValues) => ({
         ...currentValues,
-        startTime: '',
+        startTime: shouldPreserveOriginalReservationSlot({
+          currentValues,
+          initialValues,
+        })
+          ? currentValues.startTime
+          : '',
       }));
     }
 
@@ -223,14 +240,14 @@ function ReservationForm({
         peopleCount > 0 &&
         slot.available >= peopleCount,
     );
-    const shouldKeepCurrentSlot =
-      initialValues.startTime &&
-      values.startTime === initialValues.startTime &&
-      values.experienceId === initialValues.experienceId &&
-      values.date === initialValues.date &&
+    const shouldAddOriginalSlot =
+      shouldPreserveOriginalReservationSlot({
+        currentValues: values,
+        initialValues,
+      }) &&
       !slots.some((slot) => slot.startTime === initialValues.startTime);
 
-    if (!shouldKeepCurrentSlot) {
+    if (!shouldAddOriginalSlot) {
       return slots;
     }
 
