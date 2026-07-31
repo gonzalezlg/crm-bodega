@@ -21,7 +21,7 @@ export function getReservations(filters = {}) {
 }
 
 export function getReservationById(id) {
-  return request(`/reservations/${id}`);
+  return request(`/reservations/${encodeURIComponent(id)}`);
 }
 
 export function createReservation(data) {
@@ -32,36 +32,41 @@ export function createReservation(data) {
 }
 
 export function updateReservation(id, data) {
-  return request(`/reservations/${id}`, {
+  return request(`/reservations/${encodeURIComponent(id)}`, {
     method: 'PATCH',
     body: JSON.stringify(data),
   });
 }
 
 export function getAvailability(experienceId, date) {
-  return request(`/experiences/${experienceId}/availability?date=${date}`);
+  const params = new URLSearchParams();
+  params.set('date', date);
+
+  return request(
+    `/experiences/${encodeURIComponent(experienceId)}/availability?${params.toString()}`,
+  );
 }
 
 export function confirmReservation(id) {
-  return request(`/reservations/${id}/confirm`, {
+  return request(`/reservations/${encodeURIComponent(id)}/confirm`, {
     method: 'PATCH',
   });
 }
 
 export function cancelReservation(id) {
-  return request(`/reservations/${id}/cancel`, {
+  return request(`/reservations/${encodeURIComponent(id)}/cancel`, {
     method: 'PATCH',
   });
 }
 
 export function attendReservation(id) {
-  return request(`/reservations/${id}/attend`, {
+  return request(`/reservations/${encodeURIComponent(id)}/attend`, {
     method: 'PATCH',
   });
 }
 
 export function markReservationAsNoShow(id) {
-  return request(`/reservations/${id}/no-show`, {
+  return request(`/reservations/${encodeURIComponent(id)}/no-show`, {
     method: 'PATCH',
   });
 }

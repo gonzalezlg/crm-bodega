@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import FeedbackMessages from '../components/common/FeedbackMessages';
 import ReservationForm from '../components/reservations/ReservationForm';
 import { PageContainer } from '../components/layout/PageContainer';
 import { PageHeader } from '../components/layout/PageHeader';
@@ -13,16 +14,14 @@ const initialValues = {
   notes: '',
 };
 
-function getErrorMessage(error) {
-  return error instanceof Error
-    ? error.message
-    : 'No se pudo completar la operacion.';
+function getErrorMessages(error) {
+  return Array.isArray(error.messages) ? error.messages : [error.message];
 }
 
 function ReservationCreatePage() {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState('');
+  const [submitErrors, setSubmitErrors] = useState([]);
 
   async function handleSubmit(data) {
     if (isSubmitting) {
@@ -30,13 +29,13 @@ function ReservationCreatePage() {
     }
 
     setIsSubmitting(true);
-    setSubmitError('');
+    setSubmitErrors([]);
 
     try {
       await createReservation(data);
       navigate('/reservas');
     } catch (error) {
-      setSubmitError(getErrorMessage(error));
+      setSubmitErrors(getErrorMessages(error));
     } finally {
       setIsSubmitting(false);
     }
@@ -50,18 +49,15 @@ function ReservationCreatePage() {
     <PageContainer>
       <PageHeader
         title="Nueva reserva"
-        subtitle="Carga la experiencia, fecha, horario y cantidad de personas."
+        subtitle="Cargá la experiencia, fecha, horario y cantidad de personas."
       />
 
-      {submitError && (
-        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {submitError}
-        </div>
-      )}
+      <FeedbackMessages saveErrors={submitErrors} />
 
       <ReservationForm
         initialValues={initialValues}
         isSubmitting={isSubmitting}
+        primaryLabel="Guardar reserva"
         onSubmit={handleSubmit}
         onCancel={handleCancel}
       />

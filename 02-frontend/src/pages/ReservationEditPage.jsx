@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import FeedbackMessages from '../components/common/FeedbackMessages';
 import ReservationForm from '../components/reservations/ReservationForm';
 import { PageContainer } from '../components/layout/PageContainer';
 import { PageHeader } from '../components/layout/PageHeader';
+import { Button } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Loading } from '../components/ui/Loading';
 import {
@@ -10,10 +12,8 @@ import {
   updateReservation,
 } from '../services/reservationsService';
 
-function getErrorMessage(error) {
-  return error instanceof Error
-    ? error.message
-    : 'No se pudo completar la operacion.';
+function getErrorMessages(error) {
+  return Array.isArray(error.messages) ? error.messages : [error.message];
 }
 
 function buildInitialValues(reservation) {
@@ -33,17 +33,17 @@ function ReservationEditPage() {
   const [reservation, setReservation] = useState(null);
   const [initialValues, setInitialValues] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [queryError, setQueryError] = useState('');
+  const [queryErrors, setQueryErrors] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState('');
+  const [submitErrors, setSubmitErrors] = useState([]);
 
   useEffect(() => {
     let isMounted = true;
 
     async function loadReservation() {
       setIsLoading(true);
-      setQueryError('');
-      setSubmitError('');
+      setQueryErrors([]);
+      setSubmitErrors([]);
 
       try {
         const data = await getReservationById(id);
@@ -55,7 +55,7 @@ function ReservationEditPage() {
         if (!data?.id) {
           setReservation(null);
           setInitialValues(null);
-          setQueryError('Reserva no encontrada.');
+          setQueryErrors(['Reserva no encontrada.']);
           return;
         }
 
@@ -68,7 +68,7 @@ function ReservationEditPage() {
 
         setReservation(null);
         setInitialValues(null);
-        setQueryError(getErrorMessage(error));
+        setQueryErrors(getErrorMessages(error));
       } finally {
         if (isMounted) {
           setIsLoading(false);
@@ -89,13 +89,13 @@ function ReservationEditPage() {
     }
 
     setIsSubmitting(true);
-    setSubmitError('');
+    setSubmitErrors([]);
 
     try {
       await updateReservation(id, data);
       navigate('/reservas');
     } catch (error) {
-      setSubmitError(getErrorMessage(error));
+      setSubmitErrors(getErrorMessages(error));
     } finally {
       setIsSubmitting(false);
     }
@@ -113,13 +113,18 @@ function ReservationEditPage() {
     );
   }
 
-  if (queryError || !reservation || !initialValues) {
+  if (queryErrors.length > 0 || !reservation || !initialValues) {
     return (
       <PageContainer>
         <EmptyState
           title="Reserva no encontrada"
           description={
-            queryError || 'No se pudo encontrar la reserva solicitada.'
+            queryErrors[0] || 'No se pudo encontrar la reserva solicitada.'
+          }
+          action={
+            <Button variant="secondary" onClick={() => navigate('/reservas')}>
+              Volver a reservas
+            </Button>
           }
         />
       </PageContainer>
@@ -130,18 +135,15 @@ function ReservationEditPage() {
     <PageContainer>
       <PageHeader
         title="Editar reserva"
-        subtitle="Actualiza los datos operativos de la reserva."
+        subtitle="Actualizá los datos operativos de la reserva."
       />
 
-      {submitError && (
-        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {submitError}
-        </div>
-      )}
+      <FeedbackMessages saveErrors={submitErrors} />
 
       <ReservationForm
         initialValues={initialValues}
         isSubmitting={isSubmitting}
+        primaryLabel="Guardar cambios"
         onSubmit={handleSubmit}
         onCancel={handleCancel}
       />

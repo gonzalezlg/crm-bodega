@@ -1,36 +1,22 @@
 import ReservationStatusBadge from './ReservationStatusBadge';
-
-function formatDate(date) {
-  return typeof date === 'string' ? date.slice(0, 10) : '-';
-}
-
-function formatDateTime(date) {
-  if (!date) {
-    return '-';
-  }
-
-  const parsedDate = new Date(date);
-
-  if (Number.isNaN(parsedDate.getTime())) {
-    return '-';
-  }
-
-  return new Intl.DateTimeFormat('es-AR', {
-    dateStyle: 'short',
-    timeStyle: 'short',
-  }).format(parsedDate);
-}
-
-function getExperienceName(reservation) {
-  return reservation.experience?.name ?? '-';
-}
+import {
+  formatReservationDate,
+  formatReservationDateTime,
+  getReservationExperienceName,
+} from './reservationUtils';
 
 function ReservationDetail({ reservation }) {
   return (
     <section className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm md:p-6">
       <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-        <DetailItem label="Experiencia" value={getExperienceName(reservation)} />
-        <DetailItem label="Fecha" value={formatDate(reservation.date)} />
+        <DetailItem
+          label="Experiencia"
+          value={getReservationExperienceName(reservation)}
+        />
+        <DetailItem
+          label="Fecha"
+          value={formatReservationDate(reservation.date)}
+        />
         <DetailItem label="Horario" value={reservation.startTime || '-'} />
         <DetailItem
           label="Cantidad de personas"
@@ -45,12 +31,12 @@ function ReservationDetail({ reservation }) {
           </div>
         </div>
         <DetailItem
-          label="Fecha de creacion"
-          value={formatDateTime(reservation.createdAt)}
+          label="Fecha de creación"
+          value={formatReservationDateTime(reservation.createdAt)}
         />
         <DetailItem
-          label="Ultima actualizacion"
-          value={formatDateTime(reservation.updatedAt)}
+          label="Última actualización"
+          value={formatReservationDateTime(reservation.updatedAt)}
         />
         <div className="md:col-span-2 lg:col-span-3">
           <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">

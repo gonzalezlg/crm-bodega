@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Button } from '../ui/Button';
 
@@ -35,9 +35,16 @@ const actionsByStatus = {
   ],
 };
 
-function ReservationQuickActions({ reservation, disabled = false, onAction }) {
+function ReservationQuickActions({
+  reservation,
+  disabled = false,
+  ariaLabel = 'Abrir acciones de reserva',
+  onAction,
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState(null);
+  const menuId = useId();
+  const triggerButtonRef = useRef(null);
   const triggerRef = useRef(null);
   const menuRef = useRef(null);
   const actions = actionsByStatus[reservation?.status] ?? [];
@@ -78,6 +85,12 @@ function ReservationQuickActions({ reservation, disabled = false, onAction }) {
   }, [actions.length]);
 
   useEffect(() => {
+    if (disabled) {
+      setIsOpen(false);
+    }
+  }, [disabled]);
+
+  useEffect(() => {
     if (!isOpen) {
       return undefined;
     }
@@ -100,6 +113,7 @@ function ReservationQuickActions({ reservation, disabled = false, onAction }) {
     function handleKeyDown(event) {
       if (event.key === 'Escape') {
         setIsOpen(false);
+        triggerButtonRef.current?.focus();
       }
     }
 
@@ -137,11 +151,14 @@ function ReservationQuickActions({ reservation, disabled = false, onAction }) {
     <div ref={triggerRef} className="inline-flex">
       <Button
         variant="secondary"
+        ref={triggerButtonRef}
         className="min-h-9 px-3 py-1.5"
         onClick={toggleMenu}
         disabled={disabled}
         aria-haspopup="menu"
         aria-expanded={isOpen}
+        aria-controls={menuId}
+        aria-label={ariaLabel}
       >
         Acciones {isOpen ? '▲' : '▼'}
       </Button>
@@ -151,6 +168,7 @@ function ReservationQuickActions({ reservation, disabled = false, onAction }) {
         createPortal(
           <div
             ref={menuRef}
+            id={menuId}
             role="menu"
             className="fixed z-50 w-48 overflow-hidden rounded-md border border-zinc-200 bg-white py-1 shadow-lg"
             style={{

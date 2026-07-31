@@ -22,7 +22,7 @@ function getTodayDateString() {
 function getErrorMessage(error) {
   return error instanceof Error
     ? error.message
-    : 'No se pudo completar la operacion.';
+    : 'No se pudo completar la operación.';
 }
 
 function validate(values, { experiencesLoading, experiencesError }) {
@@ -30,11 +30,11 @@ function validate(values, { experiencesLoading, experiencesError }) {
   const peopleCount = Number(values.peopleCount);
 
   if (experiencesLoading) {
-    errors.experienceId = 'Espera a que terminen de cargar las experiencias.';
+    errors.experienceId = 'Esperá a que terminen de cargar las experiencias.';
   } else if (experiencesError) {
     errors.experienceId = 'No se pudieron cargar las experiencias.';
   } else if (!values.experienceId) {
-    errors.experienceId = 'Selecciona una experiencia.';
+    errors.experienceId = 'Seleccioná una experiencia.';
   }
 
   if (!values.date) {
@@ -44,21 +44,47 @@ function validate(values, { experiencesLoading, experiencesError }) {
   if (!values.peopleCount) {
     errors.peopleCount = 'Este campo es obligatorio.';
   } else if (!Number.isInteger(peopleCount)) {
-    errors.peopleCount = 'Debe ser un numero entero.';
+    errors.peopleCount = 'Debe ser un número entero.';
   } else if (peopleCount < 1) {
     errors.peopleCount = 'Debe ser mayor o igual a 1.';
   }
 
   if (!values.startTime) {
-    errors.startTime = 'Selecciona un horario.';
+    errors.startTime = 'Seleccioná un horario.';
   }
 
   return errors;
 }
 
+function getStartTimePlaceholder({
+  experienceId,
+  date,
+  hasValidPeopleCount,
+  availabilityLoading,
+}) {
+  if (!experienceId) {
+    return 'Seleccioná primero una experiencia';
+  }
+
+  if (!date) {
+    return 'Seleccioná primero una fecha';
+  }
+
+  if (!hasValidPeopleCount) {
+    return 'Ingresá la cantidad de personas';
+  }
+
+  if (availabilityLoading) {
+    return 'Cargando horarios disponibles...';
+  }
+
+  return 'Seleccionar horario';
+}
+
 function ReservationForm({
   initialValues = defaultInitialValues,
   isSubmitting = false,
+  primaryLabel = 'Guardar cambios',
   onSubmit,
   onCancel,
 }) {
@@ -218,6 +244,17 @@ function ReservationForm({
     ];
   }, [availability, initialValues, values]);
 
+  const peopleCount = Number(values.peopleCount);
+  const hasValidPeopleCount =
+    Number.isInteger(peopleCount) && peopleCount > 0;
+  const shouldShowAvailabilityMessage =
+    !availabilityLoading &&
+    values.experienceId &&
+    values.date &&
+    hasValidPeopleCount &&
+    availableSlots.length === 0 &&
+    !availabilityError;
+
   function handleChange(event) {
     const { name, value } = event.target;
 
@@ -269,12 +306,31 @@ function ReservationForm({
     onSubmit(payload);
   }
 
-  const submitDisabled =
-    isSubmitting ||
-    experiencesLoading ||
-    Boolean(experiencesError) ||
-    availabilityLoading ||
-    Boolean(availabilityError);
+  const isSubmitDisabled = useMemo(
+    () =>
+      isSubmitting ||
+      experiencesLoading ||
+      Boolean(experiencesError) ||
+      experiences.length === 0 ||
+      availabilityLoading ||
+      Boolean(availabilityError) ||
+      !values.experienceId ||
+      !values.date ||
+      !hasValidPeopleCount ||
+      !values.startTime,
+    [
+      availabilityError,
+      availabilityLoading,
+      experiences.length,
+      experiencesError,
+      experiencesLoading,
+      hasValidPeopleCount,
+      isSubmitting,
+      values.date,
+      values.experienceId,
+      values.startTime,
+    ],
+  );
 
   return (
     <form
@@ -370,7 +426,7 @@ function ReservationForm({
                 availabilityLoading ||
                 !values.experienceId ||
                 !values.date ||
-                Number(values.peopleCount) < 1
+                !hasValidPeopleCount
               }
               className={`mt-1 block w-full rounded-md border bg-white px-3 py-2 text-sm text-zinc-950 shadow-sm outline-none transition focus:ring-2 disabled:cursor-not-allowed disabled:bg-zinc-100 ${
                 errors.startTime
@@ -379,9 +435,12 @@ function ReservationForm({
               }`}
             >
               <option value="">
-                {availabilityLoading
-                  ? 'Cargando horarios disponibles...'
-                  : 'Seleccionar horario'}
+                {getStartTimePlaceholder({
+                  experienceId: values.experienceId,
+                  date: values.date,
+                  hasValidPeopleCount,
+                  availabilityLoading,
+                })}
               </option>
               {availableSlots.map((slot) => (
                 <option key={slot.startTime} value={slot.startTime}>
@@ -394,16 +453,13 @@ function ReservationForm({
             {errors.startTime && (
               <p className="mt-1 text-xs text-red-600">{errors.startTime}</p>
             )}
-            {!availabilityLoading &&
-              values.experienceId &&
-              values.date &&
-              Number(values.peopleCount) > 0 &&
-              availableSlots.length === 0 &&
-              !availabilityError && (
-                <p className="mt-1 text-xs text-amber-700">
-                  No existen horarios disponibles para la fecha seleccionada.
-                </p>
-              )}
+            {shouldShowAvailabilityMessage && (
+              <p className="mt-1 text-xs text-amber-700">
+                No hay horarios con disponibilidad suficiente para {peopleCount}{' '}
+                {peopleCount === 1 ? 'persona' : 'personas'} en la fecha
+                seleccionada.
+              </p>
+            )}
             {availabilityError && (
               <p className="mt-1 text-xs text-red-600">{availabilityError}</p>
             )}
@@ -426,16 +482,17 @@ function ReservationForm({
         </div>
       </div>
 
-      {(experiencesError || availabilityError) && (
+      {experiencesError && (
         <div className="mt-5 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {experiencesError || availabilityError}
+          {experiencesError}
         </div>
       )}
 
       <div className="mt-6">
         <FormActions
           onCancel={onCancel}
-          submitDisabled={submitDisabled}
+          submitDisabled={isSubmitDisabled}
+          primaryLabel={primaryLabel}
           submitLoading={isSubmitting}
         />
       </div>

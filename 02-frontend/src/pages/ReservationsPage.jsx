@@ -75,6 +75,8 @@ function ReservationsPage() {
   const [isActionLoading, setIsActionLoading] = useState(false);
 
   const hasActiveFilters = Boolean(date || experienceId || status);
+  const isBusy = isLoading || isActionLoading;
+  const controlsDisabled = isBusy;
   const pendingActionConfig = useMemo(
     () => (pendingAction ? actionConfig[pendingAction] : null),
     [pendingAction],
@@ -142,9 +144,19 @@ function ReservationsPage() {
   }, []);
 
   function clearFilters() {
+    setStatusErrors([]);
+    setSuccessMessage('');
     setDate('');
     setExperienceId('');
     setStatus('');
+  }
+
+  function handleFilterChange(setFilterValue) {
+    return (event) => {
+      setStatusErrors([]);
+      setSuccessMessage('');
+      setFilterValue(event.target.value);
+    };
   }
 
   function handleQuickAction(action, reservation) {
@@ -193,7 +205,10 @@ function ReservationsPage() {
         title="Reservas"
         subtitle="Consulta las reservas registradas en la bodega."
         actions={
-          <Button onClick={() => navigate('/reservas/nueva')}>
+          <Button
+            onClick={() => navigate('/reservas/nueva')}
+            disabled={controlsDisabled}
+          >
             Nueva reserva
           </Button>
         }
@@ -214,9 +229,10 @@ function ReservationsPage() {
             id="reservations-date"
             type="date"
             value={date}
-            onChange={(event) => setDate(event.target.value)}
+            onChange={handleFilterChange(setDate)}
+            disabled={controlsDisabled}
             aria-label="Filtrar reservas por fecha"
-            className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-950 outline-none transition focus:border-zinc-500 focus:ring-2 focus:ring-zinc-200"
+            className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-950 outline-none transition focus:border-zinc-500 focus:ring-2 focus:ring-zinc-200 disabled:cursor-not-allowed disabled:bg-zinc-100 disabled:text-zinc-500"
           />
         </div>
 
@@ -227,8 +243,8 @@ function ReservationsPage() {
           <select
             id="reservations-experience"
             value={experienceId}
-            onChange={(event) => setExperienceId(event.target.value)}
-            disabled={experiencesLoading}
+            onChange={handleFilterChange(setExperienceId)}
+            disabled={experiencesLoading || controlsDisabled}
             aria-label="Filtrar reservas por experiencia"
             className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-950 outline-none transition focus:border-zinc-500 focus:ring-2 focus:ring-zinc-200 disabled:cursor-not-allowed disabled:bg-zinc-100 disabled:text-zinc-500"
           >
@@ -252,9 +268,10 @@ function ReservationsPage() {
           <select
             id="reservations-status"
             value={status}
-            onChange={(event) => setStatus(event.target.value)}
+            onChange={handleFilterChange(setStatus)}
+            disabled={controlsDisabled}
             aria-label="Filtrar reservas por estado"
-            className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-950 outline-none transition focus:border-zinc-500 focus:ring-2 focus:ring-zinc-200"
+            className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-950 outline-none transition focus:border-zinc-500 focus:ring-2 focus:ring-zinc-200 disabled:cursor-not-allowed disabled:bg-zinc-100 disabled:text-zinc-500"
           >
             <option value="">Todos</option>
             <option value="PENDING">Pendiente</option>
@@ -268,7 +285,7 @@ function ReservationsPage() {
         <Button
           variant="secondary"
           onClick={clearFilters}
-          disabled={!hasActiveFilters}
+          disabled={!hasActiveFilters || controlsDisabled}
           className="w-full md:w-auto"
         >
           Limpiar filtros
@@ -293,6 +310,7 @@ function ReservationsPage() {
       ) : (
         <ReservationsTable
           reservations={reservations}
+          controlsDisabled={controlsDisabled}
           quickActionsDisabled={isActionLoading}
           onView={(reservation) => navigate(`/reservas/${reservation.id}`)}
           onEdit={(reservation) => navigate(`/reservas/${reservation.id}/editar`)}

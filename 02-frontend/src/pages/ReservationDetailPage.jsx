@@ -4,6 +4,7 @@ import ConfirmStatusDialog from '../components/common/ConfirmStatusDialog';
 import FeedbackMessages from '../components/common/FeedbackMessages';
 import ReservationActions from '../components/reservations/ReservationActions';
 import ReservationDetail from '../components/reservations/ReservationDetail';
+import { canEditReservation } from '../components/reservations/reservationUtils';
 import { PageContainer } from '../components/layout/PageContainer';
 import { PageHeader } from '../components/layout/PageHeader';
 import { Button } from '../components/ui/Button';
@@ -54,10 +55,6 @@ const actionConfig = {
 
 function getErrorMessages(error) {
   return Array.isArray(error.messages) ? error.messages : [error.message];
-}
-
-function canEditReservation(reservation) {
-  return reservation?.status === 'PENDING' || reservation?.status === 'CONFIRMED';
 }
 
 function ReservationDetailPage() {
@@ -140,6 +137,11 @@ function ReservationDetailPage() {
           description={
             queryErrors[0] || 'No se pudo encontrar la reserva solicitada.'
           }
+          action={
+            <Button variant="secondary" onClick={() => navigate('/reservas')}>
+              Volver a reservas
+            </Button>
+          }
         />
       </PageContainer>
     );
@@ -152,7 +154,11 @@ function ReservationDetailPage() {
         subtitle="Consulta los datos y gestiona el estado de la reserva."
         actions={
           <>
-            <Button variant="secondary" onClick={() => navigate('/reservas')}>
+            <Button
+              variant="secondary"
+              onClick={() => navigate('/reservas')}
+              disabled={isActionLoading}
+            >
               Volver
             </Button>
             {canEditReservation(reservation) && (

@@ -1,21 +1,16 @@
 import ReservationStatusBadge from './ReservationStatusBadge';
 import ReservationQuickActions from './ReservationQuickActions';
+import {
+  canEditReservation,
+  formatReservationDate,
+  getReservationAccessibleLabel,
+  getReservationExperienceName,
+} from './reservationUtils';
 import { Button } from '../ui/Button';
-
-function formatDate(date) {
-  return typeof date === 'string' ? date.slice(0, 10) : '-';
-}
-
-function getExperienceName(reservation) {
-  return reservation.experience?.name ?? '-';
-}
-
-function canEditReservation(reservation) {
-  return reservation.status === 'PENDING' || reservation.status === 'CONFIRMED';
-}
 
 function ReservationsTable({
   reservations = [],
+  controlsDisabled = false,
   quickActionsDisabled = false,
   onView,
   onEdit,
@@ -49,13 +44,13 @@ function ReservationsTable({
             {reservations.map((reservation) => (
               <tr key={reservation.id} className="hover:bg-zinc-50">
                 <td className="whitespace-nowrap px-4 py-4 text-sm font-medium text-zinc-950">
-                  {formatDate(reservation.date)}
+                  {formatReservationDate(reservation.date)}
                 </td>
                 <td className="whitespace-nowrap px-4 py-4 text-sm text-zinc-700">
                   {reservation.startTime}
                 </td>
                 <td className="whitespace-nowrap px-4 py-4 text-sm text-zinc-700">
-                  {getExperienceName(reservation)}
+                  {getReservationExperienceName(reservation)}
                 </td>
                 <td className="whitespace-nowrap px-4 py-4 text-sm text-zinc-700">
                   {reservation.peopleCount}
@@ -69,6 +64,10 @@ function ReservationsTable({
                       variant="secondary"
                       className="min-h-9 px-3 py-1.5"
                       onClick={() => onView?.(reservation)}
+                      disabled={controlsDisabled}
+                      aria-label={`Ver reserva de ${getReservationAccessibleLabel(
+                        reservation,
+                      )}`}
                     >
                       Ver
                     </Button>
@@ -77,6 +76,10 @@ function ReservationsTable({
                         variant="secondary"
                         className="min-h-9 px-3 py-1.5"
                         onClick={() => onEdit?.(reservation)}
+                        disabled={controlsDisabled}
+                        aria-label={`Editar reserva de ${getReservationAccessibleLabel(
+                          reservation,
+                        )}`}
                       >
                         Editar
                       </Button>
@@ -84,6 +87,9 @@ function ReservationsTable({
                     <ReservationQuickActions
                       reservation={reservation}
                       disabled={quickActionsDisabled}
+                      ariaLabel={`Abrir acciones para la reserva de ${getReservationAccessibleLabel(
+                        reservation,
+                      )}`}
                       onAction={onQuickAction}
                     />
                   </div>
