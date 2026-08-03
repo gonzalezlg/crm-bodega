@@ -4,6 +4,7 @@ export function FormActions({
   onCancel,
   onSubmit,
   submitDisabled = false,
+  primaryLabel = 'Guardar cambios',
   submitLoading = false,
 }) {
   return (
@@ -17,7 +18,7 @@ export function FormActions({
         disabled={submitDisabled}
         loading={submitLoading}
       >
-        Guardar cambios
+        {primaryLabel}
       </Button>
     </div>
   );

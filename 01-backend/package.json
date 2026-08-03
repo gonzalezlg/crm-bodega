@@ -6,6 +6,7 @@
     "build": "nest build",
     "start": "node dist/src/main.js",
     "start:dev": "nest start --watch",
+    "test": "node -r ts-node/register --test",
     "prisma:generate": "prisma generate",
     "migrate": "prisma migrate dev",
     "seed": "prisma db seed"

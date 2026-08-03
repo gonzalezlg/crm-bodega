@@ -32,10 +32,16 @@ const navigationGroups = [
     title: 'Operación',
     items: [
       {
+        label: 'Experiencias',
+        path: '/experiences',
+        icon: CalendarDays,
+        enabled: true,
+      },
+      {
         label: 'Reservas',
         path: '/reservas',
         icon: CalendarDays,
-        enabled: false,
+        enabled: true,
       },
       {
         label: 'Ventas',

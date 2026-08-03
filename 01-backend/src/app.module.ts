@@ -4,12 +4,25 @@ import { AppController } from './app.controller';
 import { AuthModule } from './auth/auth.module';
 import { AuthGuard } from './auth/guards/auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
+import { AvailabilityModule } from './availability/availability.module';
 import { CategoriasModule } from './categorias/categorias.module';
 import { ClientesModule } from './clientes/clientes.module';
+import { ExperiencesModule } from './experiences/experiences.module';
 import { ProductosModule } from './productos/productos.module';
+import { ReservationsModule } from './reservations/reservations.module';
+import { TimeSlotsModule } from './time-slots/time-slots.module';
 
 @Module({
-  imports: [AuthModule, ClientesModule, CategoriasModule, ProductosModule],
+  imports: [
+    AuthModule,
+    ClientesModule,
+    CategoriasModule,
+    ProductosModule,
+    ExperiencesModule,
+    TimeSlotsModule,
+    AvailabilityModule,
+    ReservationsModule,
+  ],
   controllers: [AppController],
   providers: [
     {
