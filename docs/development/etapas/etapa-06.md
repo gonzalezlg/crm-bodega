@@ -1,6 +1,6 @@
 # Etapa 06 - Motor de Reservas
 
-> Estado: En planificación
+> Estado: Núcleo administrativo implementado
 >
 > Documento maestro de la Etapa 06.
 >
@@ -8,34 +8,140 @@
 >
 > Toda decisión de implementación deberá respetar las definiciones establecidas en este documento.
 
+> Este documento conserva tanto las decisiones de planificación como el registro de la implementación realizada durante la Etapa 06.
+>
+> Las secciones redactadas en tiempo futuro, o identificadas como funcionalidades diferidas o futuras evoluciones, representan alcance pendiente y no deben interpretarse como funcionalidades actualmente implementadas.
+>
+> La sección "Estado de implementación" constituye la referencia para conocer el estado real del módulo al cierre de esta etapa.
+
+---
+
+# Estado de implementación
+
+La Etapa 06 dejó implementado el núcleo administrativo del Motor de Reservas. El sistema ya permite administrar experiencias, definir franjas horarias, calcular disponibilidad real, crear y gestionar reservas desde el CRM y evitar sobreventa mediante validaciones de backend.
+
+Este cierre no incluye todas las funcionalidades originalmente previstas para la visión completa del Motor de Reservas. Las funcionalidades diferidas permanecen documentadas para etapas futuras y no deben interpretarse como eliminadas del alcance funcional del producto.
+
+## Implementado
+
+- Modelo de experiencias.
+- Modelo de franjas horarias.
+- Capacidad por horario medida en personas.
+- Modelo de excepciones de disponibilidad en backend.
+- Motor de disponibilidad.
+- Disponibilidad descontando reservas activas.
+- Endpoint HTTP de disponibilidad.
+- Reservas administrativas.
+- Creación de reservas.
+- Edición de reservas.
+- Detalle de reserva.
+- Listado de reservas.
+- Filtros administrativos por fecha, estado y experiencia.
+- Reservas próximas para uso operativo.
+- Acciones rápidas desde el listado.
+- Estados de reserva.
+- Transiciones de estado: confirmar, cancelar, registrar asistencia y marcar ausencia.
+- Diálogos de confirmación para acciones sensibles.
+- Prevención de sobreventa.
+- Transacciones con aislamiento `Serializable`.
+- Reintentos ante conflictos de concurrencia Prisma `P2034`.
+- Frontend administrativo de reservas.
+- Pruebas backend.
+- Build backend.
+- Build frontend.
+
+## Diferido
+
+- Visitantes.
+- Copia histórica de datos de contacto.
+- Canal de origen CRM / WEB.
+- Calendario operativo visual.
+- Gestión frontend de excepciones.
+- CRUD administrativo de excepciones.
+- API pública de creación de reservas.
+- Integración completa con la web pública.
+
+## Endpoints implementados
+
+### Reservas
+
+- `GET /reservations`
+- `GET /reservations/upcoming`
+- `GET /reservations/:id`
+- `POST /reservations`
+- `PATCH /reservations/:id`
+- `PATCH /reservations/:id/confirm`
+- `PATCH /reservations/:id/cancel`
+- `PATCH /reservations/:id/attend`
+- `PATCH /reservations/:id/no-show`
+
+### Disponibilidad
+
+- `GET /experiences/:experienceId/availability?date=YYYY-MM-DD`
+
+### Experiencias y franjas horarias
+
+- `GET /experiences`
+- `GET /experiences/:id`
+- `POST /experiences`
+- `PATCH /experiences/:id`
+- `GET /experiences/:experienceId/time-slots`
+- `GET /time-slots/:id`
+- `POST /experiences/:experienceId/time-slots`
+- `PATCH /time-slots/:id`
+
+## Decisiones finales implementadas
+
+- El backend es la fuente de verdad para disponibilidad, capacidad, reglas temporales y transiciones de estado.
+- La capacidad se mide en personas mediante `peopleCount`, no por cantidad de reservas.
+- La disponibilidad se calcula dinámicamente y no se almacena como entidad persistente.
+- La disponibilidad descuenta reservas con estados `PENDING`, `CONFIRMED`, `ATTENDED` y `NO_SHOW`.
+- Las reservas `CANCELLED` liberan capacidad automáticamente al quedar excluidas del cálculo de ocupación.
+- La edición de reservas excluye la propia reserva del cálculo de ocupación para evitar descontarla dos veces.
+- La validación definitiva de disponibilidad se realiza en backend.
+- La creación y edición de reservas utilizan transacciones Prisma con aislamiento `Serializable`.
+- Los conflictos de concurrencia `P2034` se reintentan hasta 3 intentos.
+- La fecha de negocio utiliza `BUSINESS_TIME_ZONE`, con valor por defecto `America/Argentina/Buenos_Aires`.
+- La ventana máxima de reserva se controla mediante `RESERVATION_WINDOW_DAYS`, con valor por defecto 45.
+- La anticipación mínima se controla mediante `MIN_RESERVATION_NOTICE_MINUTES`, con valor por defecto 60.
+- Los endpoints administrativos de reservas y disponibilidad requieren rol `OWNER`.
+- El frontend administrativo consume la API REST del backend y no replica reglas críticas de negocio.
+
+## Pruebas y validación
+
+La etapa fue validada mediante:
+
+- Tests backend.
+- Build backend.
+- Build frontend.
+
 ---
 
 # 1. Objetivo
 
-El objetivo de esta etapa es desarrollar un Motor de Reservas completamente configurable que permita administrar las experiencias ofrecidas por la bodega, su disponibilidad, capacidad y reservas.
+El objetivo de esta etapa fue implementar el núcleo administrativo de un Motor de Reservas configurable que permite administrar las experiencias ofrecidas por la bodega, su disponibilidad, capacidad y reservas.
 
-El motor deberá centralizar toda la lógica del negocio relacionada con la disponibilidad para que pueda ser utilizada tanto por el Dashboard del CRM como por la página pública de la bodega.
+El motor centraliza la lógica de negocio relacionada con la disponibilidad para el CRM. La integración completa con la página pública de la bodega queda diferida para etapas futuras.
 
-El backend será la única fuente de verdad.
+El backend es la única fuente de verdad.
 
-No deberá existir lógica de negocio duplicada entre el frontend del CRM y la página pública.
+No debe existir lógica de negocio crítica duplicada en el frontend.
 
 ---
 
 # 2. Alcance
 
-Esta etapa incluye el desarrollo de los siguientes componentes.
+Esta etapa implementó el núcleo administrativo de los siguientes componentes.
 
 - Gestión de experiencias.
 - Configuración de disponibilidad semanal.
 - Configuración de franjas horarias.
 - Configuración de capacidad por horario.
-- Gestión de excepciones.
-- Gestión de visitantes.
+- Modelo de excepciones y aplicación en el motor de disponibilidad.
 - Gestión de reservas.
 - Motor de cálculo de disponibilidad.
-- Calendario operativo.
-- API pública para reservas.
+
+Quedaron diferidos el calendario operativo visual, la gestión frontend de excepciones, visitantes, la copia histórica de datos de contacto, el canal de origen CRM / WEB y la API pública de creación de reservas.
 
 ---
 
@@ -1532,7 +1638,13 @@ No se deberán implementar funcionalidades pertenecientes a bloques posteriores 
 
 ---
 
-# 34. Criterios Generales de Aceptación
+# 34. Criterios de aceptación originales
+
+Los siguientes criterios representan el alcance funcional originalmente definido para la Etapa 06.
+
+Al cierre actual quedó implementado el núcleo administrativo del Motor de Reservas.
+
+Las funcionalidades relacionadas con Visitantes, Calendario Operativo, Gestión Frontend de Excepciones, API Pública e Integración completa con la Web permanecen diferidas para etapas posteriores.
 
 La Etapa 06 se considerará terminada cuando:
 
@@ -1726,7 +1838,7 @@ La funcionalidad no se implementará en la Etapa 06, pero el Motor de Reservas d
 
 ### Decisión
 
-`docs/etapa-06.md` será la única fuente de verdad de la Etapa 06.
+`docs/development/etapas/etapa-06.md` será la fuente de verdad de la Etapa 06.
 
 ### Motivo
 
@@ -1776,13 +1888,13 @@ Estas funcionalidades no forman parte del alcance actual.
 
 # 38. Estado del Documento
 
-Este documento permanecerá en estado:
+Este documento queda en estado:
 
-En planificación
+Núcleo administrativo implementado
 
-hasta que se apruebe el diseño técnico concreto de la primera subetapa.
+porque la implementación actual cubre el backend, el frontend administrativo y la disponibilidad real de reservas, pero mantiene diferidas funcionalidades previstas para etapas futuras.
 
-Durante la implementación deberá actualizarse para reflejar:
+Durante futuras iteraciones deberá actualizarse para reflejar:
 
 - decisiones definitivas;
 - cambios aprobados;
@@ -1790,7 +1902,7 @@ Durante la implementación deberá actualizarse para reflejar:
 - pruebas realizadas;
 - estado de cada bloque.
 
-Al finalizar la Etapa 06, el estado deberá cambiarse a: Completada
+No se utiliza el estado "Completada" porque permanecen diferidos Visitantes, calendario operativo visual, gestión frontend de excepciones, API pública de creación de reservas e integración completa con la web pública.
 
 # 39. Notas para la implementación
 

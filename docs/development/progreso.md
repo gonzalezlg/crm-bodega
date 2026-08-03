@@ -6,7 +6,7 @@
 **Estado:** 🟢 En desarrollo
 **Etapa actual:** Reservas
 **Próxima etapa:** Compras y Proveedores
-**Última actualización:** 27/07/2026
+**Última actualización:** 03/08/2026
 
 ---
 
@@ -224,15 +224,40 @@ Una etapa solo puede considerarse finalizada cuando:
 
 ## Etapa 6 - Reservas
 
-- [ ] Modelo
-- [ ] Backend
-- [ ] Frontend
-- [ ] Calendario
-- [ ] Estados de reserva
-- [ ] Confirmaciones
-- [ ] Pruebas
-- [ ] Documentar etapa
-- [ ] Commit
+### Núcleo implementado
+
+- [x] Modelo de experiencias
+- [x] Modelo de franjas horarias
+- [x] Modelo de excepciones de disponibilidad
+- [x] Modelo de reservas
+- [x] Backend de experiencias y horarios
+- [x] Motor de disponibilidad
+- [x] Disponibilidad real descontando reservas
+- [x] Backend de reservas
+- [x] Frontend administrativo de reservas
+- [x] Creación y edición de reservas
+- [x] Detalle de reserva
+- [x] Estados y transiciones
+- [x] Confirmaciones de acciones
+- [x] Filtros del listado
+- [x] Acciones rápidas
+- [x] Prevención de sobreventa y concurrencia
+- [x] Pruebas backend
+- [x] Build backend
+- [x] Build frontend
+- [x] Documentación final de la etapa
+- [ ] Commit de documentación
+- [ ] Pull Request y merge
+
+### Funcionalidades diferidas
+
+- [ ] Calendario operativo visual
+- [ ] Gestión frontend de excepciones
+- [ ] Entidad Visitante y vinculación con reservas
+- [ ] Copia histórica de datos de contacto
+- [ ] Canal de origen CRM / WEB
+- [ ] API pública de creación de reservas
+- [ ] Integración con la página pública
 
 ---
 
